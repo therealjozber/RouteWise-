@@ -1,3 +1,5 @@
+import json
+
 from django.contrib import messages
 from django.db.models import Count, Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
@@ -5,7 +7,7 @@ from django.views.decorators.http import require_http_methods
 
 from .forms import DriverRegistrationForm, IncidentReportForm, SimulateMessageForm
 from .models import Driver, IncidentReport, RouteSegment, TransportRoute
-from .segment_utils import build_route_map_data, find_closest_segment
+from .segment_utils import build_all_routes_map_data, build_route_map_data, find_closest_segment
 from .services.incident_processing import finalize_incident_report
 from .services.messaging import parse_incoming_message
 from .services.risk_engine import calculate_route_risk
@@ -27,8 +29,19 @@ def _find_route_by_hint(hint: str):
 
 
 def home(request):
-    routes = TransportRoute.objects.prefetch_related("segments")[:4]
-    return render(request, "home.html", {"featured_routes": routes})
+    featured_routes = TransportRoute.objects.prefetch_related("segments").order_by("-risk_score")[:6]
+    stats = {
+        "routes": TransportRoute.objects.count(),
+        "drivers": Driver.objects.count(),
+        "incidents": IncidentReport.objects.count(),
+        "high_risk": TransportRoute.objects.filter(status__in=["High Risk", "Avoid"]).count(),
+    }
+    all_map_data = build_all_routes_map_data()
+    return render(request, "home.html", {
+        "featured_routes": featured_routes,
+        "stats": stats,
+        "all_map_json": all_map_data,
+    })
 
 
 def dashboard(request):
@@ -44,7 +57,7 @@ def dashboard(request):
         .select_related("route")
         .order_by("-risk_score")[:10]
     )
-    latest_reports = IncidentReport.objects.select_related("route", "segment")[:10]
+    latest_reports = IncidentReport.objects.select_related("route", "segment").order_by("-created_at")[:10]
     location_counts = (
         IncidentReport.objects.values("location_name")
         .annotate(c=Count("id"))
@@ -54,6 +67,7 @@ def dashboard(request):
         {"location": x["location_name"], "count": x["c"]}
         for x in location_counts
     ]
+    all_map_data = build_all_routes_map_data()
     return render(
         request,
         "dashboard.html",
@@ -66,12 +80,26 @@ def dashboard(request):
             "dangerous_segments": dangerous_segments,
             "latest_reports": latest_reports,
             "most_reported": most_reported,
+            "all_map_json": all_map_data,
         },
     )
 
 
+def live_map(request):
+    all_map_data = build_all_routes_map_data()
+    routes = TransportRoute.objects.order_by("-risk_score")
+    recent_incidents = IncidentReport.objects.select_related("route", "segment").order_by("-created_at")[:15]
+    return render(request, "live_map.html", {
+        "all_map_json": all_map_data,
+        "routes": routes,
+        "recent_incidents": recent_incidents,
+        "routes_count": routes.count(),
+        "incidents_count": IncidentReport.objects.count(),
+    })
+
+
 def routes_list(request):
-    routes = TransportRoute.objects.prefetch_related("segments")
+    routes = TransportRoute.objects.prefetch_related("segments").order_by("-risk_score")
     return render(request, "routes.html", {"routes": routes})
 
 
@@ -84,26 +112,24 @@ def route_detail(request, pk):
         pk=pk,
     )
     risk = calculate_route_risk(route)
-    reports = route.incidents.all()[:20]
+    reports = route.incidents.all().order_by("-created_at")[:20]
     map_data = build_route_map_data(route)
     waypoint_ladder = []
     segments = list(route.segments.order_by("order"))
     if segments:
-        waypoint_ladder.append({"name": segments[0].from_location, "segment": None})
+        waypoint_ladder.append({"name": segments[0].from_location, "segment": None, "status": None})
         for seg in segments:
             seg_risk = next(
                 (s for s in risk["segments"] if s["segment_id"] == seg.pk),
                 None,
             )
-            waypoint_ladder.append(
-                {
-                    "name": seg.to_location,
-                    "segment": seg,
-                    "risk": seg_risk,
-                    "status": seg.status,
-                    "risk_score": seg.risk_score,
-                }
-            )
+            waypoint_ladder.append({
+                "name": seg.to_location,
+                "segment": seg,
+                "risk": seg_risk,
+                "status": seg.status,
+                "risk_score": seg.risk_score,
+            })
     return render(
         request,
         "route_detail.html",
@@ -144,7 +170,7 @@ def report_incident(request):
             initial["route"] = route_id
         form = IncidentReportForm(initial=initial)
 
-    recent = IncidentReport.objects.select_related("route", "segment")[:8]
+    recent = IncidentReport.objects.select_related("route", "segment").order_by("-created_at")[:8]
     return render(
         request,
         "report_incident.html",
@@ -169,7 +195,7 @@ def register_driver(request):
             return redirect("register_driver")
     else:
         form = DriverRegistrationForm()
-    drivers = Driver.objects.all()[:12]
+    drivers = Driver.objects.all().order_by("-created_at")[:20]
     return render(
         request,
         "register_driver.html",

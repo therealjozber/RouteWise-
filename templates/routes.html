@@ -5,41 +5,101 @@
 <div class="page-header">
   <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
-      <h1 class="h2 fw-bold text-primary mb-1">Transport Routes</h1>
+      <h1><i class="fa-solid fa-map-location-dot me-2" style="color:var(--rw-accent)"></i>Transport Routes</h1>
       <p class="text-muted mb-0">Key Tanzanian corridors with live community risk scores</p>
     </div>
-    <a href="{% url 'report_incident' %}" class="btn btn-rw-primary">Report on a Route</a>
+    <div class="d-flex gap-2">
+      <a href="{% url 'live_map' %}" class="btn btn-sm" style="background:rgba(6,214,160,0.1);color:#059669;border:1px solid rgba(6,214,160,0.3)">
+        <span class="live-dot"></span> Live Map
+      </a>
+      <a href="{% url 'report_incident' %}" class="btn btn-rw-primary btn-sm">
+        <i class="fa-solid fa-flag me-1"></i>Report Incident
+      </a>
+    </div>
   </div>
 </div>
 
 <div class="container pb-5">
-  <div class="row g-4">
+
+  <!-- Status filter pills -->
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    <span class="text-muted small align-self-center me-1">Filter:</span>
+    <button class="map-filter-btn filter-safe active" onclick="filterRoutes(this, 'all')">All Routes</button>
+    <button class="map-filter-btn filter-safe" onclick="filterRoutes(this, 'Safe')">
+      <span style="color:var(--rw-safe)">●</span> Safe
+    </button>
+    <button class="map-filter-btn filter-caution" onclick="filterRoutes(this, 'Caution')">
+      <span style="color:var(--rw-caution)">●</span> Caution
+    </button>
+    <button class="map-filter-btn filter-high" onclick="filterRoutes(this, 'High Risk')">
+      <span style="color:var(--rw-high)">●</span> High Risk
+    </button>
+    <button class="map-filter-btn filter-avoid" onclick="filterRoutes(this, 'Avoid')">
+      <span style="color:var(--rw-avoid)">●</span> Avoid
+    </button>
+  </div>
+
+  <div class="row g-4" id="routes-grid">
     {% for route in routes %}
-    <div class="col-md-6 col-lg-4">
-      <div class="card rw-card h-100 p-4">
-        <div class="d-flex justify-content-between mb-2">
-          <h5 class="fw-bold mb-0">{{ route.origin }}</h5>
-          <span class="text-muted">→</span>
-          <h5 class="fw-bold mb-0 text-end">{{ route.destination }}</h5>
+    <div class="col-md-6 col-lg-4 route-item" data-status="{{ route.status }}">
+      <div class="card rw-card route-card h-100">
+        <div class="rw-card-status-bar {% if route.status == 'Safe' %}safe{% elif route.status == 'Caution' %}caution{% elif route.status == 'High Risk' %}high{% else %}avoid{% endif %}"></div>
+        <div class="route-card-header">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <h5 class="fw-bold mb-0 text-primary" style="font-size:1rem">
+              {{ route.origin }} <span class="text-muted fw-normal">→</span> {{ route.destination }}
+            </h5>
+            <span class="status-badge badge-{% if route.status == 'Safe' %}safe{% elif route.status == 'Caution' %}caution{% elif route.status == 'High Risk' %}high-risk{% else %}avoid{% endif %} flex-shrink-0">
+              {{ route.status }}
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2 mt-1 mb-1">
+            <span class="route-distance-badge">{{ route.distance_km }} km</span>
+            <span class="text-muted small">{{ route.estimated_time }}</span>
+          </div>
+          <p class="text-muted mb-0" style="font-size:0.75rem;color:#94a3b8!important">
+            <i class="fa-solid fa-location-dot me-1"></i>{{ route.via_display|truncatechars:50 }}
+          </p>
         </div>
-        <p class="text-muted small">{{ route.distance_km }} km · {{ route.estimated_time }}</p>
-        <p class="small text-secondary mb-2" style="font-size:0.75rem">{{ route.via_display|truncatechars:55 }}</p>
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span>Risk Score</span>
-          <strong>{{ route.risk_score }}/100</strong>
+        <div class="px-3 pb-3">
+          <div class="d-flex justify-content-between align-items-center small mb-1">
+            <span class="text-muted">Community Risk Score</span>
+            <strong class="{% if route.risk_score > 60 %}text-danger{% elif route.risk_score > 30 %}text-warning{% else %}text-success{% endif %}">
+              {{ route.risk_score }}<span class="text-muted fw-normal">/100</span>
+            </strong>
+          </div>
+          <div class="risk-bar mb-3">
+            <div class="risk-bar-fill {% if route.risk_score <= 30 %}risk-low{% elif route.risk_score <= 60 %}risk-mid{% elif route.risk_score <= 80 %}risk-high{% else %}risk-critical{% endif %}" style="width:{{ route.risk_score }}%"></div>
+          </div>
+          <a href="{% url 'route_detail' route.pk %}" class="btn btn-rw-ghost btn-sm w-100">
+            <i class="fa-solid fa-map-location-dot me-2"></i>View Route & Map
+          </a>
         </div>
-        <div class="risk-bar mb-2">
-          <div class="risk-bar-fill {% if route.risk_score <= 30 %}risk-low{% elif route.risk_score <= 60 %}risk-mid{% elif route.risk_score <= 80 %}risk-high{% else %}risk-critical{% endif %}" style="width:{{ route.risk_score }}%"></div>
-        </div>
-        <span class="status-badge badge-{% if route.status == 'Safe' %}safe{% elif route.status == 'Caution' %}caution{% elif route.status == 'High Risk' %}high-risk{% else %}avoid{% endif %}">{{ route.status }}</span>
-        <a href="{% url 'route_detail' route.pk %}" class="btn btn-outline-primary btn-sm w-100 mt-3">View Route & Map →</a>
       </div>
     </div>
     {% empty %}
     <div class="col-12 text-center py-5">
-      <p class="text-muted">No routes yet. Run: <code>python manage.py seed_data</code></p>
+      <i class="fa-solid fa-road fa-3x text-muted mb-3 d-block"></i>
+      <p class="text-muted">No routes yet. Run: <code>python manage.py seed_data --clear</code></p>
     </div>
     {% endfor %}
   </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterRoutes(btn, status) {
+  document.querySelectorAll('.map-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.route-item').forEach(function(el) {
+    if (status === 'all' || el.dataset.status === status) {
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+</script>
 {% endblock %}

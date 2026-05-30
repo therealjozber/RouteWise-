@@ -1,121 +1,272 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Home{% endblock %}
 
 {% block content %}
+
+<!-- ══════════════════════════════════════════════════════
+     HERO — full-height with embedded Tanzania live map
+══════════════════════════════════════════════════════ -->
 <section class="hero-section">
-  <div class="container hero-content">
-    <div class="row align-items-center">
-      <div class="col-lg-8">
-        <h1 class="display-4 fw-bold mb-3">
-          <span class="brand-icon">🛣️</span> RouteWise <span class="text-accent" style="color:#2ec4b6">TZ</span>
+  <div class="hero-bg-pattern"></div>
+  <div class="hero-grid"></div>
+  <div class="container w-100">
+    <div class="row align-items-center g-4 hero-content">
+
+      <!-- Left: text -->
+      <div class="col-lg-5">
+        <div class="hero-eyebrow fade-in-up">
+          <span class="live-dot"></span>
+          Live Road Intelligence · Tanzania
+        </div>
+        <h1 class="hero-title fade-in-up delay-1">
+          <span style="display:block;font-size:0.45em;font-weight:600;opacity:0.7;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.3em">Introducing</span>
+          RouteWise <span class="brand-tz">TZ</span>
         </h1>
-        <p class="hero-tagline mb-4">
-          Community-powered road intelligence for Tanzanian transporters
+        <p class="hero-tagline fade-in-up delay-2">
+          Google Maps for Tanzanian transporters — community-powered road risk, real-time incident reporting, and AI route recommendations for drivers on Tanzania's key corridors.
         </p>
-        <div class="d-flex flex-wrap gap-3">
-          <a href="{% url 'register_driver' %}" class="btn btn-rw-primary btn-lg">Register Driver</a>
-          <a href="{% url 'report_incident' %}" class="btn btn-rw-outline btn-lg">Report Incident</a>
-          <a href="{% url 'routes_list' %}" class="btn btn-rw-outline btn-lg">View Routes</a>
+        <div class="hero-cta-group fade-in-up delay-3">
+          <a href="{% url 'live_map' %}" class="btn btn-rw-primary btn-lg">
+            <i class="fa-solid fa-map me-2"></i>Open Live Map
+          </a>
+          <a href="{% url 'routes_list' %}" class="btn btn-rw-outline btn-lg">
+            <i class="fa-solid fa-route me-2"></i>Browse Routes
+          </a>
+          <a href="{% url 'report_incident' %}" class="btn btn-rw-outline btn-lg">
+            <i class="fa-solid fa-flag me-2"></i>Report Incident
+          </a>
+        </div>
+
+        <!-- Live stats strip -->
+        <div class="hero-stats fade-in-up delay-3">
+          <div class="hero-stat-item">
+            <div class="hero-stat-value">{{ stats.routes }}<span>+</span></div>
+            <div class="hero-stat-label">Routes Monitored</div>
+          </div>
+          <div class="hero-stat-item">
+            <div class="hero-stat-value">{{ stats.drivers }}<span>+</span></div>
+            <div class="hero-stat-label">Drivers Registered</div>
+          </div>
+          <div class="hero-stat-item">
+            <div class="hero-stat-value">{{ stats.incidents }}<span>+</span></div>
+            <div class="hero-stat-label">Incidents Tracked</div>
+          </div>
+          {% if stats.high_risk > 0 %}
+          <div class="hero-stat-item">
+            <div class="hero-stat-value" style="color:#ef476f">{{ stats.high_risk }}</div>
+            <div class="hero-stat-label">High-Risk Routes</div>
+          </div>
+          {% endif %}
         </div>
       </div>
-      <div class="col-lg-4 d-none d-lg-block text-center">
-        <div class="display-1 opacity-75">🇹🇿</div>
-        <p class="small opacity-75">Dar · Morogoro · Dodoma · Mwanza</p>
+
+      <!-- Right: Tanzania live map -->
+      <div class="col-lg-7 hero-map-container d-none d-lg-flex">
+        <div class="hero-map-card w-100">
+          <div class="hero-map-label">
+            <span class="live-dot"></span>
+            Live Tanzania Road Risk Map — roads colored by community risk score
+          </div>
+          {{ all_map_json|json_script:"all-routes-data" }}
+          <div id="hero-map"></div>
+        </div>
       </div>
+
+      <!-- Mobile: render all-routes-data without hero map (data still injected once) -->
+      {% if not all_map_json %}{% else %}
+      <!-- data already injected above -->
+      {% endif %}
+
     </div>
   </div>
 </section>
 
+<!-- ══════════════════════════════════════════════════════
+     FEATURES
+══════════════════════════════════════════════════════ -->
 <section class="py-5">
   <div class="container">
-    <h2 class="section-title text-center">Built for Tanzania's Roads</h2>
+    <div class="text-center mb-5">
+      <h2 class="section-title">Built for Tanzania's Roads</h2>
+      <p class="section-subtitle">Real-time, community-driven, AI-enhanced</p>
+    </div>
     <div class="row g-4">
-      <div class="col-md-6 col-lg-3">
-        <div class="card rw-card h-100 p-4 text-center">
-          <div class="feature-icon">📡</div>
-          <h5>Real-time Road Reports</h5>
-          <p class="text-muted small mb-0">Drivers share accidents, floods, traffic, and checkpoints as they happen.</p>
+      <div class="col-md-6 col-lg-3 fade-in-up">
+        <div class="card rw-card feature-card h-100">
+          <div class="feature-icon-wrap fi-blue">
+            <i class="fa-solid fa-satellite-dish"></i>
+          </div>
+          <h5 class="fw-700 mb-2">Real-time Reports</h5>
+          <p class="text-muted small mb-0">Drivers share accidents, floods, police checkpoints, and road blocks as they happen — via SMS, WhatsApp, or web.</p>
         </div>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="card rw-card h-100 p-4 text-center">
-          <div class="feature-icon">🤖</div>
-          <h5>AI Route Risk Scoring</h5>
-          <p class="text-muted small mb-0">Smart risk scores from severity, incident type, and community verification.</p>
+      <div class="col-md-6 col-lg-3 fade-in-up delay-1">
+        <div class="card rw-card feature-card h-100">
+          <div class="feature-icon-wrap fi-cyan">
+            <i class="fa-solid fa-brain"></i>
+          </div>
+          <h5 class="fw-700 mb-2">AI Risk Scoring</h5>
+          <p class="text-muted small mb-0">Gemini AI analyses each report — weighing severity, incident type, freshness, and community verification into a clear 0–100 risk score.</p>
         </div>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="card rw-card h-100 p-4 text-center">
-          <div class="feature-icon">💬</div>
-          <h5>SMS/WhatsApp Alerts</h5>
-          <p class="text-muted small mb-0">Report via phone — structured messages parsed into live route updates.</p>
+      <div class="col-md-6 col-lg-3 fade-in-up delay-2">
+        <div class="card rw-card feature-card h-100">
+          <div class="feature-icon-wrap fi-green">
+            <i class="fa-solid fa-map"></i>
+          </div>
+          <h5 class="fw-700 mb-2">Color-coded Roads</h5>
+          <p class="text-muted small mb-0">OpenStreetMap with every road segment colored green→amber→red based on live community risk — see danger at a glance.</p>
         </div>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="card rw-card h-100 p-4 text-center">
-          <div class="feature-icon">🛡️</div>
-          <h5>Driver Safety Recommendations</h5>
-          <p class="text-muted small mb-0">Clear guidance: delay departure, alternate routes, or proceed with caution.</p>
+      <div class="col-md-6 col-lg-3 fade-in-up delay-3">
+        <div class="card rw-card feature-card h-100">
+          <div class="feature-icon-wrap fi-amber">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+          </div>
+          <h5 class="fw-700 mb-2">SMS/WhatsApp Alerts</h5>
+          <p class="text-muted small mb-0">Report incidents via structured SMS — auto-parsed, AI-assessed, and broadcast to all drivers on that corridor instantly.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="pitch-section py-5">
+<!-- ══════════════════════════════════════════════════════
+     FEATURED ROUTES
+══════════════════════════════════════════════════════ -->
+<section class="py-5" style="background:#fff;border-top:1px solid var(--rw-border)">
   <div class="container">
-    <div class="row g-5">
-      <div class="col-lg-6">
-        <h2 class="section-title">The Problem We Solve</h2>
-        <ul class="list-unstyled">
-          <li class="mb-2">❌ Poor real-time road visibility across long corridors</li>
-          <li class="mb-2">❌ Unsafe road conditions with no unified reporting</li>
-          <li class="mb-2">❌ Fragmented driver communication (calls, groups, word of mouth)</li>
-          <li class="mb-2">❌ Unreliable logistics planning and unpredictable delays</li>
-        </ul>
-        <h3 class="h5 mt-4 text-primary">RouteWise TZ supports</h3>
-        <p>SMS · WhatsApp · Web dashboard · AI route recommendations</p>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h2 class="section-title mb-1">Tanzania Corridors</h2>
+        <p class="text-muted mb-0">Key routes with live community risk scores</p>
       </div>
-      <div class="col-lg-6">
-        <h2 class="section-title">Tanzania Transport Impact</h2>
-        <ul class="impact-list">
-          <li>✅ Safer drivers with advance warning of hazards</li>
-          <li>✅ Fewer delays through smarter departure timing</li>
-          <li>✅ Lower fuel waste from avoidable congestion</li>
-          <li>✅ Better logistics decisions for fleets and companies</li>
-          <li>✅ Scalable model across Tanzania and Africa</li>
-        </ul>
-        <a href="{% url 'dashboard' %}" class="btn btn-rw-primary mt-3">Open Live Dashboard →</a>
-      </div>
+      <a href="{% url 'routes_list' %}" class="btn btn-rw-ghost">
+        All Routes <i class="fa-solid fa-arrow-right ms-1"></i>
+      </a>
     </div>
-  </div>
-</section>
-
-<section class="py-5 bg-white">
-  <div class="container">
-    <h2 class="section-title text-center">Hackathon Alignment</h2>
-    <p class="text-center text-muted mb-4 mx-auto" style="max-width:720px">
-      RouteWise TZ demonstrates community tech for transport — combining Django, OpenStreetMap,
-      simulated SMS/WhatsApp ingestion, and a transparent risk engine judges can test live.
-    </p>
-    <div class="row g-3 justify-content-center">
+    <div class="row g-3">
       {% for route in featured_routes %}
-      <div class="col-md-6 col-lg-3">
-        <div class="card rw-card p-3">
-          <div class="d-flex justify-content-between align-items-start">
-            <strong class="small">{{ route.origin }} → {{ route.destination }}</strong>
-            <span class="status-badge badge-{% if route.status == 'Safe' %}safe{% elif route.status == 'Caution' %}caution{% elif route.status == 'High Risk' %}high-risk{% else %}avoid{% endif %}">{{ route.status }}</span>
+      <div class="col-md-6 col-lg-4">
+        <div class="card rw-card route-card h-100">
+          <div class="rw-card-status-bar {% if route.status == 'Safe' %}safe{% elif route.status == 'Caution' %}caution{% elif route.status == 'High Risk' %}high{% else %}avoid{% endif %}"></div>
+          <div class="route-card-header">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div>
+                <span class="fw-bold text-primary" style="font-size:0.95rem">{{ route.origin }}</span>
+                <span class="text-muted mx-1">→</span>
+                <span class="fw-bold text-primary" style="font-size:0.95rem">{{ route.destination }}</span>
+              </div>
+              <span class="status-badge badge-{% if route.status == 'Safe' %}safe{% elif route.status == 'Caution' %}caution{% elif route.status == 'High Risk' %}high-risk{% else %}avoid{% endif %}">
+                {{ route.status }}
+              </span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-1">
+              <span class="text-muted" style="font-size:0.78rem">{{ route.distance_km }} km · {{ route.estimated_time }}</span>
+            </div>
           </div>
-          <div class="risk-bar mt-2">
-            <div class="risk-bar-fill {% if route.risk_score <= 30 %}risk-low{% elif route.risk_score <= 60 %}risk-mid{% elif route.risk_score <= 80 %}risk-high{% else %}risk-critical{% endif %}" style="width:{{ route.risk_score }}%"></div>
+          <div class="px-3 pb-3">
+            <div class="d-flex justify-content-between small mb-1">
+              <span class="text-muted">Risk Score</span>
+              <strong class="{% if route.risk_score > 60 %}text-danger{% elif route.risk_score > 30 %}text-warning{% else %}text-success{% endif %}">{{ route.risk_score }}/100</strong>
+            </div>
+            <div class="risk-bar mb-3">
+              <div class="risk-bar-fill {% if route.risk_score <= 30 %}risk-low{% elif route.risk_score <= 60 %}risk-mid{% elif route.risk_score <= 80 %}risk-high{% else %}risk-critical{% endif %}" style="width:{{ route.risk_score }}%"></div>
+            </div>
+            <a href="{% url 'route_detail' route.pk %}" class="btn btn-rw-ghost btn-sm w-100">
+              <i class="fa-solid fa-map-location-dot me-1"></i>View Route Map
+            </a>
           </div>
-          <small class="text-muted">Risk: {{ route.risk_score }}/100</small>
         </div>
       </div>
       {% empty %}
-      <p class="text-center text-muted">Run <code>python manage.py seed_data</code> to load demo routes.</p>
+      <div class="col-12 text-center py-4 text-muted">
+        Run <code>python manage.py seed_data --clear</code> to load demo routes.
+      </div>
       {% endfor %}
     </div>
   </div>
 </section>
+
+<!-- ══════════════════════════════════════════════════════
+     PROBLEM / SOLUTION
+══════════════════════════════════════════════════════ -->
+<section class="pitch-section py-5">
+  <div class="container">
+    <div class="row g-5">
+      <div class="col-lg-6">
+        <h2 class="section-title">The Problem</h2>
+        <ul class="list-unstyled">
+          <li class="mb-3 d-flex gap-3">
+            <span style="color:#ef476f;font-size:1.1rem">✗</span>
+            <div><strong>No real-time visibility</strong> — drivers travel 600+ km corridors blind to hazards ahead.</div>
+          </li>
+          <li class="mb-3 d-flex gap-3">
+            <span style="color:#ef476f;font-size:1.1rem">✗</span>
+            <div><strong>Fragmented comms</strong> — road info scattered across phone calls, WhatsApp groups, and word-of-mouth.</div>
+          </li>
+          <li class="mb-3 d-flex gap-3">
+            <span style="color:#ef476f;font-size:1.1rem">✗</span>
+            <div><strong>Unreliable logistics</strong> — fleet managers can't plan around unpredictable delays and closures.</div>
+          </li>
+          <li class="mb-3 d-flex gap-3">
+            <span style="color:#ef476f;font-size:1.1rem">✗</span>
+            <div><strong>Safety gaps</strong> — theft hotspots, flood crossings, and bad road sections have no unified warning system.</div>
+          </li>
+        </ul>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="section-title" style="color:var(--rw-safe)">Our Solution</h2>
+        <ul class="list-unstyled">
+          <li class="mb-3 d-flex gap-3">
+            <span style="color:var(--rw-safe);font-size:1.1rem">✓</span>
+            <div><strong>Live color-coded map</strong> — every road segment colored by community-verified risk score.</div>
+          </li>
+          <li class="mb-3 d-flex gap-3">
+            <span style="color:var(--rw-safe);font-size:1.1rem">✓</span>
+            <div><strong>SMS/WhatsApp ingestion</strong> — any driver with basic phone can report: <code>Flood#Kilosa#Morogoro</code></div>
+          </li>
+          <li class="mb-3 d-flex gap-3">
+            <span style="color:var(--rw-safe);font-size:1.1rem">✓</span>
+            <div><strong>AI route recommendations</strong> — Gemini analyses each incident and recommends: depart later, take alternate, or reduce speed.</div>
+          </li>
+          <li class="mb-3 d-flex gap-3">
+            <span style="color:var(--rw-safe);font-size:1.1rem">✓</span>
+            <div><strong>Section-level intelligence</strong> — one bad town doesn't cancel the whole trip. Precise segment-level risk.</div>
+          </li>
+        </ul>
+        <div class="d-flex gap-2 flex-wrap mt-3">
+          <a href="{% url 'dashboard' %}" class="btn btn-rw-primary">
+            <i class="fa-solid fa-gauge-high me-1"></i>Live Dashboard
+          </a>
+          <a href="{% url 'simulate_message' %}" class="btn btn-rw-ghost">
+            <i class="fa-solid fa-mobile me-1"></i>Demo SMS/WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════
+     CTA BAND
+══════════════════════════════════════════════════════ -->
+<section class="py-5" style="background:linear-gradient(135deg,var(--rw-primary-dark) 0%,var(--rw-primary) 100%);color:#fff">
+  <div class="container text-center">
+    <h2 class="fw-800 mb-3" style="font-size:2rem">Ready to make Tanzania's roads safer?</h2>
+    <p class="mb-4 opacity-75" style="max-width:560px;margin:0 auto 1.5rem">
+      Register your vehicle, report what you see, and help build the most accurate road intelligence network in East Africa.
+    </p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+      <a href="{% url 'register_driver' %}" class="btn btn-rw-primary btn-lg">
+        <i class="fa-solid fa-id-card me-2"></i>Register Driver
+      </a>
+      <a href="{% url 'live_map' %}" class="btn btn-rw-outline btn-lg">
+        <i class="fa-solid fa-map me-2"></i>Open Live Map
+      </a>
+    </div>
+  </div>
+</section>
+
 {% endblock %}

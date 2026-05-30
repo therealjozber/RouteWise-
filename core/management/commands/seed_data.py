@@ -13,29 +13,36 @@ ROUTES = [
     ("Dar es Salaam → Tanga", "Dar es Salaam", "Tanga", 354, "5–6 hours"),
     ("Morogoro → Dodoma", "Morogoro", "Dodoma", 262, "4–5 hours"),
     ("Dodoma → Mwanza", "Dodoma", "Mwanza", 705, "9–10 hours"),
+    ("Arusha → Namanga Border", "Arusha", "Namanga", 107, "1.5–2 hours"),
+    ("Mbeya → Tunduma Border", "Mbeya", "Tunduma", 100, "1.5–2 hours"),
+    ("Dar es Salaam → Lindi", "Dar es Salaam", "Lindi", 580, "9–10 hours"),
+    ("Dodoma → Tabora", "Dodoma", "Tabora", 340, "5–6 hours"),
+    ("Morogoro → Iringa", "Morogoro", "Iringa", 305, "5–6 hours"),
 ]
 
-# (from, to, distance_km, estimated_time) per segment in order
 ROUTE_SEGMENTS = {
     "Dar es Salaam → Morogoro": [
-        ("Dar es Salaam", "Chalinze", 40, "45 min"),
+        ("Dar es Salaam", "Kibaha", 35, "35 min"),
+        ("Kibaha", "Chalinze", 45, "50 min"),
         ("Chalinze", "Morogoro", 152, "2.5 hrs"),
     ],
     "Dar es Salaam → Dodoma": [
-        ("Dar es Salaam", "Chalinze", 40, "45 min"),
+        ("Dar es Salaam", "Kibaha", 35, "35 min"),
+        ("Kibaha", "Chalinze", 45, "50 min"),
         ("Chalinze", "Morogoro", 110, "1.5 hrs"),
         ("Morogoro", "Gairo", 80, "1 hr"),
         ("Gairo", "Dodoma", 221, "3 hrs"),
     ],
     "Dar es Salaam → Arusha": [
-        ("Dar es Salaam", "Chalinze", 40, "45 min"),
+        ("Dar es Salaam", "Chalinze", 75, "1.5 hrs"),
         ("Chalinze", "Segera", 90, "1.5 hrs"),
-        ("Segera", "Same", 120, "2 hrs"),
+        ("Segera", "Korogwe", 60, "1 hr"),
+        ("Korogwe", "Same", 140, "2.5 hrs"),
         ("Same", "Moshi", 80, "1.5 hrs"),
         ("Moshi", "Arusha", 86, "1.5 hrs"),
     ],
     "Dar es Salaam → Mwanza": [
-        ("Dar es Salaam", "Chalinze", 40, "45 min"),
+        ("Dar es Salaam", "Chalinze", 75, "1.5 hrs"),
         ("Chalinze", "Morogoro", 110, "1.5 hrs"),
         ("Morogoro", "Dodoma", 180, "3 hrs"),
         ("Dodoma", "Singida", 190, "3 hrs"),
@@ -52,7 +59,8 @@ ROUTE_SEGMENTS = {
     "Dar es Salaam → Tanga": [
         ("Dar es Salaam", "Bagamoyo", 65, "1 hr"),
         ("Bagamoyo", "Msata", 45, "45 min"),
-        ("Msata", "Tanga", 244, "3.5 hrs"),
+        ("Msata", "Pangani", 80, "1.5 hrs"),
+        ("Pangani", "Tanga", 54, "1 hr"),
     ],
     "Morogoro → Dodoma": [
         ("Morogoro", "Kilosa", 80, "1.5 hrs"),
@@ -64,6 +72,26 @@ ROUTE_SEGMENTS = {
         ("Singida", "Nzega", 160, "2.5 hrs"),
         ("Nzega", "Mwanza", 355, "5 hrs"),
     ],
+    "Arusha → Namanga Border": [
+        ("Arusha", "Namanga", 107, "1.5–2 hrs"),
+    ],
+    "Mbeya → Tunduma Border": [
+        ("Mbeya", "Tunduma", 100, "1.5 hrs"),
+    ],
+    "Dar es Salaam → Lindi": [
+        ("Dar es Salaam", "Kibaha", 35, "35 min"),
+        ("Kibaha", "Kilosa", 200, "3 hrs"),
+        ("Kilosa", "Masasi", 245, "4 hrs"),
+        ("Masasi", "Lindi", 100, "2 hrs"),
+    ],
+    "Dodoma → Tabora": [
+        ("Dodoma", "Singida", 190, "3 hrs"),
+        ("Singida", "Tabora", 150, "2.5 hrs"),
+    ],
+    "Morogoro → Iringa": [
+        ("Morogoro", "Mikumi", 107, "1.5 hrs"),
+        ("Mikumi", "Iringa", 198, "3 hrs"),
+    ],
 }
 
 DRIVERS = [
@@ -73,20 +101,78 @@ DRIVERS = [
     ("Fatuma Saidi", "+255715678004", "Boda", "Courier", "Dar es Salaam → Tanga"),
     ("Robert Ngonyani", "+255716789005", "Truck", "Agriculture", "Morogoro → Dodoma"),
     ("Grace Mushi", "+255717890006", "Bus", "Passenger", "Dar es Salaam → Mwanza"),
+    ("Salim Juma", "+255718901007", "Truck", "Freight", "Dar es Salaam → Mbeya"),
+    ("Neema Kweka", "+255719012008", "Van", "Passenger", "Arusha → Namanga Border"),
+    ("Hassan Omari", "+255720123009", "Truck", "Agriculture", "Dodoma → Mwanza"),
+    ("Zawadi Mfinanga", "+255721234010", "Bus", "Passenger", "Dar es Salaam → Tanga"),
+    ("Emmanuel Lyimo", "+255722345011", "Truck", "Freight", "Mbeya → Tunduma Border"),
+    ("Rehema Massawe", "+255723456012", "Bajaji", "General Transport", "Dar es Salaam → Morogoro"),
 ]
 
 INCIDENTS = [
-    ("Dar es Salaam → Morogoro", "Accident", "Chalinze", "High", "Multi-vehicle collision near weighbridge"),
-    ("Dar es Salaam → Morogoro", "Traffic Jam", "Chalinze", "Medium", "Heavy trucks queueing"),
-    ("Dar es Salaam → Dodoma", "Accident", "Chalinze", "High", "Jack-knifed truck blocking lane"),
-    ("Dar es Salaam → Dodoma", "Bad Road", "Gairo", "Medium", "Potholes after rains"),
-    ("Morogoro → Dodoma", "Flood", "Kilosa", "Critical", "Road partially submerged"),
-    ("Dar es Salaam → Arusha", "Police Checkpoint", "Moshi", "Low", "Routine inspection"),
-    ("Dar es Salaam → Mwanza", "Fuel Shortage", "Singida", "High", "Limited diesel at stations"),
-    ("Dar es Salaam → Mbeya", "Bad Road", "Makambako", "Medium", "Gravel section rough"),
-    ("Dodoma → Mwanza", "Theft Hotspot", "Nzega", "High", "Cargo theft reports"),
-    ("Dar es Salaam → Tanga", "Road Block", "Msata", "Low", "Temporary maintenance"),
-    ("Dar es Salaam → Morogoro", "Vehicle Breakdown", "Morogoro", "Low", "Broken down lorry"),
+    # Dar-Morogoro corridor
+    ("Dar es Salaam → Morogoro", "Accident", "Chalinze", "High",
+     "Multi-vehicle collision near weighbridge — two trucks jackknifed, lane blocked", 3),
+    ("Dar es Salaam → Morogoro", "Traffic Jam", "Kibaha", "Medium",
+     "Weighbridge queue backing up 3 km — all trucks being checked", 2),
+    ("Dar es Salaam → Morogoro", "Police Checkpoint", "Morogoro", "Low",
+     "Routine police inspection at town entry, minor delays expected", 0),
+    ("Dar es Salaam → Morogoro", "Road Block", "Chalinze", "Medium",
+     "TANROADS maintenance crew, one lane closed 08:00–17:00", 1),
+    # Dar-Dodoma corridor
+    ("Dar es Salaam → Dodoma", "Accident", "Chalinze", "High",
+     "Jack-knifed fuel tanker blocking the fast lane — fuel spill hazard", 4),
+    ("Dar es Salaam → Dodoma", "Bad Road", "Gairo", "High",
+     "Large potholes after seasonal rains — road surface badly damaged", 3),
+    ("Dar es Salaam → Dodoma", "Flood", "Gairo", "Critical",
+     "Flash flooding at river crossing — road underwater, impassable for small vehicles", 5),
+    # Morogoro-Dodoma
+    ("Morogoro → Dodoma", "Flood", "Kilosa", "Critical",
+     "Road partially submerged after heavy rains — alternative track dangerous", 5),
+    ("Morogoro → Dodoma", "Bad Road", "Gairo", "Medium",
+     "10 km section of degraded tarmac, deep potholes every few meters", 2),
+    # Dar-Arusha corridor
+    ("Dar es Salaam → Arusha", "Police Checkpoint", "Moshi", "Low",
+     "Routine inspection at Moshi bypass, 10–15 min delay expected", 0),
+    ("Dar es Salaam → Arusha", "Accident", "Korogwe", "High",
+     "Bus vs truck head-on collision near Korogwe junction — road partially blocked", 4),
+    ("Dar es Salaam → Arusha", "Road Block", "Same", "Medium",
+     "Overturned cattle truck, animals on road — proceed with extreme caution", 2),
+    # Dar-Mwanza
+    ("Dar es Salaam → Mwanza", "Fuel Shortage", "Singida", "High",
+     "Diesel unavailable at all three stations — stock expected tomorrow", 2),
+    ("Dar es Salaam → Mwanza", "Theft Hotspot", "Nzega", "High",
+     "Armed robbery of two cargo trucks in past 48 hours — travel in convoy advised", 4),
+    ("Dar es Salaam → Mwanza", "Bad Road", "Nzega", "Medium",
+     "Gravel section severely rutted after rains, 4x4 advisable", 2),
+    # Dar-Mbeya
+    ("Dar es Salaam → Mbeya", "Bad Road", "Makambako", "Medium",
+     "Gravel section rough and uneven — reduce speed to 40 km/h", 1),
+    ("Dar es Salaam → Mbeya", "Accident", "Iringa", "High",
+     "Truck vs passenger van collision on steep descent — rescue teams on site", 3),
+    ("Dar es Salaam → Mbeya", "Road Block", "Mikumi", "Low",
+     "Wildlife crossing — elephant herd crossing road near Mikumi National Park", 0),
+    # Dar-Tanga
+    ("Dar es Salaam → Tanga", "Road Block", "Msata", "Low",
+     "TANROADS temporary maintenance closure, 30 min delays", 0),
+    ("Dar es Salaam → Tanga", "Bad Road", "Pangani", "Medium",
+     "Coastal road erosion — narrow single lane for 5 km stretch", 1),
+    # Dodoma-Mwanza
+    ("Dodoma → Mwanza", "Theft Hotspot", "Nzega", "High",
+     "Reports of cargo theft targeting trucks traveling alone at night", 3),
+    ("Dodoma → Mwanza", "Fuel Shortage", "Singida", "Medium",
+     "Petrol available but diesel very limited — fill up in Dodoma", 2),
+    # Arusha-Namanga
+    ("Arusha → Namanga Border", "Police Checkpoint", "Namanga", "Low",
+     "Border crossing congestion — long queues for trucks, transit docs required", 1),
+    # Mbeya-Tunduma
+    ("Mbeya → Tunduma Border", "Road Block", "Tunduma", "Medium",
+     "Border crossing backlog — 4–6 hour wait for freight trucks", 2),
+    ("Mbeya → Tunduma Border", "Bad Road", "Tunduma", "Medium",
+     "Construction work on approach road — dust and reduced visibility", 1),
+    # Morogoro-Iringa
+    ("Morogoro → Iringa", "Accident", "Mikumi", "High",
+     "Overloaded truck rolled on bend near Mikumi — tow trucks dispatched", 3),
 ]
 
 
@@ -113,7 +199,10 @@ class Command(BaseCommand):
                     "estimated_time": est,
                     "risk_score": 0,
                     "status": "Safe",
-                    "description": f"Multi-segment corridor: {origin} to {dest} via key towns.",
+                    "description": (
+                        f"Key Tanzanian transport corridor: {origin} to {dest}. "
+                        f"Community-monitored route with real-time risk updates."
+                    ),
                 },
             )
             route_map[name] = route
@@ -128,7 +217,7 @@ class Command(BaseCommand):
                     order=i,
                     distance_km=d_km,
                     estimated_time=est_seg,
-                    notes=f"Section {i}: {f} to {t}",
+                    notes=f"Section {i}: {f} to {t}.",
                 )
 
         for full_name, phone, vehicle, transport, main_route in DRIVERS:
@@ -142,7 +231,7 @@ class Command(BaseCommand):
                 },
             )
 
-        for route_name, itype, loc, sev, desc in INCIDENTS:
+        for route_name, itype, loc, sev, desc, verified in INCIDENTS:
             route = route_map.get(route_name)
             if not route:
                 continue
@@ -157,7 +246,7 @@ class Command(BaseCommand):
                     "reporter_phone": "+255700000000",
                     "description": desc,
                     "severity": sev,
-                    "verified_count": 2 if sev in ("High", "Critical") else 0,
+                    "verified_count": verified,
                 },
             )
 
