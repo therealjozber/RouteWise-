@@ -1,0 +1,16 @@
+{% if report.ai_risk_score or report.ai_recommendation %}
+<div class="ai-mini-card mt-2 p-2 rounded bg-light border-start border-primary border-3">
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-1">
+    <span class="badge bg-primary" style="font-size:0.65rem">AI</span>
+    {% if report.ai_risk_score %}
+    <span class="small fw-semibold">Risk {{ report.ai_risk_score }}/100</span>
+    {% endif %}
+    {% if report.ai_estimated_delay_minutes %}
+    <span class="small text-muted">· {{ report.ai_estimated_delay_minutes }} min delay</span>
+    {% endif %}
+  </div>
+  {% if report.ai_recommendation %}
+  <p class="mb-0 small text-muted">{{ report.ai_recommendation|truncatechars:160 }}</p>
+  {% endif %}
+</div>
+{% endif %}

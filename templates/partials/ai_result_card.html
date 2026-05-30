@@ -1,0 +1,35 @@
+{% if ai_result %}
+<div class="card rw-card p-4 mb-4 border-primary ai-result-card">
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <span class="badge bg-primary">🤖 Gemini AI</span>
+    {% if submitted_report %}
+    <small class="text-muted">{{ submitted_report.incident_type }} · {{ submitted_report.location_name }}</small>
+    {% endif %}
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-4">
+      <div class="text-muted small text-uppercase">AI Risk Score</div>
+      <div class="fs-4 fw-bold text-primary">{{ ai_result.risk_score }}/100</div>
+    </div>
+    <div class="col-6 col-md-4">
+      <div class="text-muted small text-uppercase">Est. Delay</div>
+      <div class="fs-4 fw-bold">{{ ai_result.estimated_delay_minutes }} min</div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="text-muted small text-uppercase">Severity</div>
+      <span class="status-badge badge-{% if ai_result.severity == 'Low' %}safe{% elif ai_result.severity == 'Medium' %}caution{% elif ai_result.severity == 'High' %}high-risk{% else %}avoid{% endif %}">{{ ai_result.severity }}</span>
+    </div>
+  </div>
+  <div class="recommendation-box mb-0">
+    <h6 class="fw-bold small mb-2">AI Recommendation</h6>
+    <p class="mb-0 small">{{ ai_result.recommendation }}</p>
+  </div>
+</div>
+{% endif %}
+
+{% if outgoing_alert %}
+<div class="card rw-card p-4 alert-outgoing mb-4">
+  <h6 class="fw-bold text-success mb-2">📤 Outgoing Alert (SMS/WhatsApp)</h6>
+  <p class="mb-0 small font-monospace">{{ outgoing_alert }}</p>
+</div>
+{% endif %}

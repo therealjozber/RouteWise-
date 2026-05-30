@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}{{ route.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item"><a href="{% url 'routes_list' %}">Routes</a></li>
+        <li class="breadcrumb-item active">{{ route.name }}</li>
+      </ol>
+    </nav>
+    <h1 class="h2 fw-bold text-primary">{{ route.origin }} → {{ route.destination }}</h1>
+    <p class="text-muted mb-1">{{ route.distance_km }} km · {{ route.estimated_time }}</p>
+    <p class="small text-secondary mb-0"><strong>Via:</strong> {{ route.via_display }}</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card rw-card p-4 mb-4">
+        <h5 class="fw-bold mb-3">Full Route Risk</h5>
+        <div class="text-center mb-3">
+          <div class="display-4 fw-bold text-primary">{{ risk.risk_score }}</div>
+          <small class="text-muted">/ 100 aggregate score</small>
+        </div>
+        <div class="risk-bar mb-3">
+          <div class="risk-bar-fill {% if risk.risk_score <= 30 %}risk-low{% elif risk.risk_score <= 60 %}risk-mid{% elif risk.risk_score <= 80 %}risk-high{% else %}risk-critical{% endif %}" style="width:{{ risk.risk_score }}%"></div>
+        </div>
+        <p class="text-center mb-3">
+          <span class="status-badge badge-{% if risk.status == 'Safe' %}safe{% elif risk.status == 'Caution' %}caution{% elif risk.status == 'High Risk' %}high-risk{% else %}avoid{% endif %} fs-6">{{ risk.status }}</span>
+        </p>
+        <p class="small text-muted mb-2">Est. delay (worst section): <strong>{{ risk.estimated_delay_minutes }} min</strong></p>
+        <a href="{% url 'report_incident' %}?route={{ route.pk }}" class="btn btn-rw-primary w-100 mt-2">Report Incident</a>
+      </div>
+
+      <div class="card rw-card p-4 mb-4">
+        <h5 class="fw-bold mb-3">Section-by-Section</h5>
+        {% if waypoint_ladder %}
+        <div class="segment-ladder">
+          {% for wp in waypoint_ladder %}
+          <div class="segment-ladder-item">
+            <div class="segment-ladder-node {% if wp.risk and wp.risk.status != 'Safe' %}segment-ladder-danger{% endif %}">
+              <span class="segment-ladder-name">{{ wp.name }}</span>
+              {% if wp.status %}
+              <span class="status-badge badge-{% if wp.status == 'Safe' %}safe{% elif wp.status == 'Caution' %}caution{% elif wp.status == 'High Risk' %}high-risk{% else %}avoid{% endif %} ms-1">{{ wp.status }}</span>
+              {% endif %}
+            </div>
+            {% if not forloop.last %}
+            <div class="segment-ladder-arrow">↓</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small">No segments defined.</p>
+        {% endif %}
+      </div>
+
+      <div class="recommendation-box">
+        <h6 class="fw-bold">AI Recommendation</h6>
+        <p class="mb-0 small">{{ risk.recommendation }}</p>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card rw-card p-3 mb-4">
+        <h5 class="fw-bold px-2 pt-2">Route Map — via points & incidents</h5>
+        {{ map_data_json|json_script:"map-data" }}
+        <div id="route-map"></div>
+      </div>
+
+      {% if risk.dangerous_segments %}
+      <div class="card rw-card p-4 mb-4 border-warning">
+        <h5 class="fw-bold text-danger mb-3">⚠️ Dangerous Sections</h5>
+        {% for s in risk.dangerous_segments %}
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+          <div>
+            <strong>{{ s.label }}</strong>
+            <div class="risk-bar mt-1" style="width:140px">
+              <div class="risk-bar-fill risk-high" style="width:{{ s.risk_score }}%"></div>
+            </div>
+          </div>
+          <span class="status-badge badge-{% if s.status == 'Caution' %}caution{% elif s.status == 'High Risk' %}high-risk{% else %}avoid{% endif %}">{{ s.status }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="card rw-card p-4">
+        <h5 class="fw-bold mb-3">Segment Details</h5>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Section</th>
+                <th>Distance</th>
+                <th>Risk</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in risk.segments %}
+              <tr class="{% if s.status == 'High Risk' or s.status == 'Avoid' %}table-warning{% endif %}">
+                <td>{{ s.order }}</td>
+                <td>{{ s.from_location }} → {{ s.to_location }}</td>
+                <td>{{ s.distance_km }} km</td>
+                <td>{{ s.risk_score }}</td>
+                <td><span class="status-badge badge-{% if s.status == 'Safe' %}safe{% elif s.status == 'Caution' %}caution{% elif s.status == 'High Risk' %}high-risk{% else %}avoid{% endif %}">{{ s.status }}</span></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-muted">No segments.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card rw-card p-4 mt-4">
+        <h5 class="fw-bold mb-3">Recent Reports</h5>
+        {% for r in reports %}
+        <div class="border-bottom py-3">
+          <div class="d-flex justify-content-between flex-wrap gap-1">
+            <strong>{{ r.incident_type }}</strong>
+            <span class="badge bg-secondary">{{ r.severity }}</span>
+          </div>
+          <p class="mb-1 small">{{ r.location_name }}{% if r.segment %} · <em>Section: {{ r.segment.label }}</em>{% endif %}</p>
+          <p class="mb-0 small text-muted">{{ r.description|truncatechars:80 }}</p>
+          <small class="text-muted">{{ r.reporter_name }} · {{ r.created_at|timesince }} ago</small>
+          {% include "partials/report_ai_badge.html" with report=r %}
+        </div>
+        {% empty %}
+        <p class="text-muted">No incidents reported yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

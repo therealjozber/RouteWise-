@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Routes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h1 class="h2 fw-bold text-primary mb-1">Transport Routes</h1>
+      <p class="text-muted mb-0">Key Tanzanian corridors with live community risk scores</p>
+    </div>
+    <a href="{% url 'report_incident' %}" class="btn btn-rw-primary">Report on a Route</a>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row g-4">
+    {% for route in routes %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card rw-card h-100 p-4">
+        <div class="d-flex justify-content-between mb-2">
+          <h5 class="fw-bold mb-0">{{ route.origin }}</h5>
+          <span class="text-muted">→</span>
+          <h5 class="fw-bold mb-0 text-end">{{ route.destination }}</h5>
+        </div>
+        <p class="text-muted small">{{ route.distance_km }} km · {{ route.estimated_time }}</p>
+        <p class="small text-secondary mb-2" style="font-size:0.75rem">{{ route.via_display|truncatechars:55 }}</p>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span>Risk Score</span>
+          <strong>{{ route.risk_score }}/100</strong>
+        </div>
+        <div class="risk-bar mb-2">
+          <div class="risk-bar-fill {% if route.risk_score <= 30 %}risk-low{% elif route.risk_score <= 60 %}risk-mid{% elif route.risk_score <= 80 %}risk-high{% else %}risk-critical{% endif %}" style="width:{{ route.risk_score }}%"></div>
+        </div>
+        <span class="status-badge badge-{% if route.status == 'Safe' %}safe{% elif route.status == 'Caution' %}caution{% elif route.status == 'High Risk' %}high-risk{% else %}avoid{% endif %}">{{ route.status }}</span>
+        <a href="{% url 'route_detail' route.pk %}" class="btn btn-outline-primary btn-sm w-100 mt-3">View Route & Map →</a>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+      <p class="text-muted">No routes yet. Run: <code>python manage.py seed_data</code></p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

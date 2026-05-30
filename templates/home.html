@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+  <div class="container hero-content">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <h1 class="display-4 fw-bold mb-3">
+          <span class="brand-icon">🛣️</span> RouteWise <span class="text-accent" style="color:#2ec4b6">TZ</span>
+        </h1>
+        <p class="hero-tagline mb-4">
+          Community-powered road intelligence for Tanzanian transporters
+        </p>
+        <div class="d-flex flex-wrap gap-3">
+          <a href="{% url 'register_driver' %}" class="btn btn-rw-primary btn-lg">Register Driver</a>
+          <a href="{% url 'report_incident' %}" class="btn btn-rw-outline btn-lg">Report Incident</a>
+          <a href="{% url 'routes_list' %}" class="btn btn-rw-outline btn-lg">View Routes</a>
+        </div>
+      </div>
+      <div class="col-lg-4 d-none d-lg-block text-center">
+        <div class="display-1 opacity-75">🇹🇿</div>
+        <p class="small opacity-75">Dar · Morogoro · Dodoma · Mwanza</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <h2 class="section-title text-center">Built for Tanzania's Roads</h2>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="card rw-card h-100 p-4 text-center">
+          <div class="feature-icon">📡</div>
+          <h5>Real-time Road Reports</h5>
+          <p class="text-muted small mb-0">Drivers share accidents, floods, traffic, and checkpoints as they happen.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="card rw-card h-100 p-4 text-center">
+          <div class="feature-icon">🤖</div>
+          <h5>AI Route Risk Scoring</h5>
+          <p class="text-muted small mb-0">Smart risk scores from severity, incident type, and community verification.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="card rw-card h-100 p-4 text-center">
+          <div class="feature-icon">💬</div>
+          <h5>SMS/WhatsApp Alerts</h5>
+          <p class="text-muted small mb-0">Report via phone — structured messages parsed into live route updates.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="card rw-card h-100 p-4 text-center">
+          <div class="feature-icon">🛡️</div>
+          <h5>Driver Safety Recommendations</h5>
+          <p class="text-muted small mb-0">Clear guidance: delay departure, alternate routes, or proceed with caution.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pitch-section py-5">
+  <div class="container">
+    <div class="row g-5">
+      <div class="col-lg-6">
+        <h2 class="section-title">The Problem We Solve</h2>
+        <ul class="list-unstyled">
+          <li class="mb-2">❌ Poor real-time road visibility across long corridors</li>
+          <li class="mb-2">❌ Unsafe road conditions with no unified reporting</li>
+          <li class="mb-2">❌ Fragmented driver communication (calls, groups, word of mouth)</li>
+          <li class="mb-2">❌ Unreliable logistics planning and unpredictable delays</li>
+        </ul>
+        <h3 class="h5 mt-4 text-primary">RouteWise TZ supports</h3>
+        <p>SMS · WhatsApp · Web dashboard · AI route recommendations</p>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="section-title">Tanzania Transport Impact</h2>
+        <ul class="impact-list">
+          <li>✅ Safer drivers with advance warning of hazards</li>
+          <li>✅ Fewer delays through smarter departure timing</li>
+          <li>✅ Lower fuel waste from avoidable congestion</li>
+          <li>✅ Better logistics decisions for fleets and companies</li>
+          <li>✅ Scalable model across Tanzania and Africa</li>
+        </ul>
+        <a href="{% url 'dashboard' %}" class="btn btn-rw-primary mt-3">Open Live Dashboard →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-white">
+  <div class="container">
+    <h2 class="section-title text-center">Hackathon Alignment</h2>
+    <p class="text-center text-muted mb-4 mx-auto" style="max-width:720px">
+      RouteWise TZ demonstrates community tech for transport — combining Django, OpenStreetMap,
+      simulated SMS/WhatsApp ingestion, and a transparent risk engine judges can test live.
+    </p>
+    <div class="row g-3 justify-content-center">
+      {% for route in featured_routes %}
+      <div class="col-md-6 col-lg-3">
+        <div class="card rw-card p-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <strong class="small">{{ route.origin }} → {{ route.destination }}</strong>
+            <span class="status-badge badge-{% if route.status == 'Safe' %}safe{% elif route.status == 'Caution' %}caution{% elif route.status == 'High Risk' %}high-risk{% else %}avoid{% endif %}">{{ route.status }}</span>
+          </div>
+          <div class="risk-bar mt-2">
+            <div class="risk-bar-fill {% if route.risk_score <= 30 %}risk-low{% elif route.risk_score <= 60 %}risk-mid{% elif route.risk_score <= 80 %}risk-high{% else %}risk-critical{% endif %}" style="width:{{ route.risk_score }}%"></div>
+          </div>
+          <small class="text-muted">Risk: {{ route.risk_score }}/100</small>
+        </div>
+      </div>
+      {% empty %}
+      <p class="text-center text-muted">Run <code>python manage.py seed_data</code> to load demo routes.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

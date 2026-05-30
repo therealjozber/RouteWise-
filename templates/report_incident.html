@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Report Incident{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1 class="h2 fw-bold text-primary mb-1">Report Road Incident</h1>
+    <p class="text-muted mb-0">Help fellow transporters — your report updates route risk instantly</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  {% if submitted %}
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="alert alert-success">
+        <strong>Report submitted successfully.</strong> Route and segment risks have been updated.
+      </div>
+      {% include "partials/ai_result_card.html" %}
+      <a href="{% url 'route_detail' submitted_report.route.pk %}" class="btn btn-outline-primary btn-sm">View route →</a>
+    </div>
+  </div>
+  {% endif %}
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="card rw-card p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+          </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-rw-primary w-100">Submit Report</button>
+        </form>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card rw-card p-4">
+        <h5 class="fw-bold mb-3">Recent Community Reports</h5>
+        {% for r in recent_reports %}
+        <div class="border-bottom py-2">
+          <strong>{{ r.incident_type }}</strong> at {{ r.location_name }}
+          <br><small class="text-muted">{{ r.route.name }}{% if r.segment %} · {{ r.segment.label }}{% endif %} · {{ r.severity }} · {{ r.created_at|timesince }} ago</small>
+          {% include "partials/report_ai_badge.html" with report=r %}
+        </div>
+        {% empty %}
+        <p class="text-muted">No reports yet.</p>
+        {% endfor %}
+      </div>
+      <div class="card rw-card p-4 mt-3 bg-light">
+        <h6 class="fw-bold">Prefer SMS/WhatsApp?</h6>
+        <p class="small mb-2">Format: <code>TYPE#Location#Route</code></p>
+        <p class="small text-muted mb-0">Example: <code>ACCIDENT#Chalinze#Dar es Salaam to Morogoro</code></p>
+        <a href="{% url 'simulate_message' %}" class="btn btn-outline-success btn-sm mt-2">Try Simulator →</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
