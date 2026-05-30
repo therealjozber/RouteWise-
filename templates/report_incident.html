@@ -3,58 +3,122 @@
 
 {% block content %}
 <div class="page-header">
-  <div class="container">
-    <h1 class="h2 fw-bold text-primary mb-1">Report Road Incident</h1>
-    <p class="text-muted mb-0">Help fellow transporters — your report updates route risk instantly</p>
+  <div class="container d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div>
+      <h1><i class="fa-solid fa-triangle-exclamation me-2" style="color:var(--rw-high)"></i>Report Road Incident</h1>
+      <p class="text-muted mb-0">Help fellow transporters — your report updates route risk in real-time</p>
+    </div>
+    {% if not request.user.is_authenticated %}
+    <a href="{% url 'driver_login' %}" class="btn btn-rw-ghost btn-sm">
+      <i class="fa-solid fa-right-to-bracket me-1"></i>Login for instant publish
+    </a>
+    {% endif %}
   </div>
 </div>
 
 <div class="container pb-5">
-  {% if submitted %}
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="alert alert-success">
-        <strong>Report submitted successfully.</strong> Route and segment risks have been updated.
-      </div>
-      {% include "partials/ai_result_card.html" %}
-      <a href="{% url 'route_detail' submitted_report.route.pk %}" class="btn btn-outline-primary btn-sm">View route →</a>
+
+  <!-- Auth status banner -->
+  {% if current_driver %}
+  <div class="alert mb-4 rounded-3 d-flex gap-3 align-items-center" style="background:rgba(6,214,160,.08);border:1px solid rgba(6,214,160,.25)">
+    <i class="fa-solid fa-circle-check" style="color:var(--rw-safe);font-size:1.3rem"></i>
+    <div>
+      <strong style="color:#059669">Reporting as {{ current_driver.full_name }}</strong>
+      <span class="text-muted small ms-2">Trust score: {{ current_driver.trust_score|floatformat:1 }}★ ({{ current_driver.trust_level }})</span><br>
+      <span class="text-muted small">Your reports are <strong>published immediately</strong> without approval.</span>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert mb-4 rounded-3 d-flex gap-3 align-items-start" style="background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.3)">
+    <i class="fa-solid fa-circle-info" style="color:#b45309;font-size:1.2rem;margin-top:2px"></i>
+    <div>
+      <strong style="color:#b45309">Reporting anonymously</strong><br>
+      <span class="text-muted small">
+        Anonymous reports need approval from a trusted driver before being published.
+        <a href="{% url 'driver_login' %}" class="fw-semibold ms-1">Log in</a> or
+        <a href="{% url 'driver_signup' %}" class="fw-semibold">sign up</a> to publish instantly.
+      </span>
     </div>
   </div>
   {% endif %}
+
+  {% if submitted %}
+  <div class="mb-4">
+    {% if submitted_report.approved %}
+    <div class="alert alert-success rounded-3">
+      <i class="fa-solid fa-circle-check me-2"></i>
+      <strong>Report published!</strong> Route risk updated and drivers alerted.
+      <a href="{% url 'route_detail' submitted_report.route.pk %}" class="fw-semibold ms-2">View route →</a>
+    </div>
+    {% else %}
+    <div class="alert rounded-3" style="background:rgba(255,209,102,.12);border-color:rgba(255,209,102,.4)">
+      <i class="fa-solid fa-clock me-2" style="color:#b45309"></i>
+      <strong style="color:#b45309">Report submitted — pending approval.</strong>
+      A trusted driver will review and publish it shortly.
+    </div>
+    {% endif %}
+    {% include "partials/ai_result_card.html" %}
+  </div>
+  {% endif %}
+
   <div class="row g-4">
     <div class="col-lg-6">
       <div class="card rw-card p-4">
+        <h5 class="fw-bold mb-3"><i class="fa-solid fa-flag me-2"></i>Incident Details</h5>
         <form method="post" novalidate>
           {% csrf_token %}
           {% for field in form %}
           <div class="mb-3">
-            <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            <label class="form-label fw-semibold small" for="{{ field.id_for_label }}">{{ field.label }}</label>
             {{ field }}
-            {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+            {% if field.help_text %}<div class="form-text small">{{ field.help_text }}</div>{% endif %}
+            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
           </div>
           {% endfor %}
-          <button type="submit" class="btn btn-rw-primary w-100">Submit Report</button>
+          <button type="submit" class="btn btn-rw-primary w-100 py-2">
+            <i class="fa-solid fa-paper-plane me-2"></i>
+            {% if current_driver %}Publish Report{% else %}Submit for Approval{% endif %}
+          </button>
         </form>
       </div>
     </div>
+
     <div class="col-lg-6">
-      <div class="card rw-card p-4">
-        <h5 class="fw-bold mb-3">Recent Community Reports</h5>
+      <div class="card rw-card p-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="fa-solid fa-clock-rotate-left me-2"></i>Recent Community Reports</h5>
         {% for r in recent_reports %}
         <div class="border-bottom py-2">
-          <strong>{{ r.incident_type }}</strong> at {{ r.location_name }}
-          <br><small class="text-muted">{{ r.route.name }}{% if r.segment %} · {{ r.segment.label }}{% endif %} · {{ r.severity }} · {{ r.created_at|timesince }} ago</small>
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
+            <div>
+              <span class="incident-pill incident-{{ r.incident_type|lower|slugify }}">{{ r.incident_type }}</span>
+              <strong class="ms-1 small">{{ r.location_name }}</strong>
+            </div>
+            <span class="status-badge badge-{% if r.severity == 'Low' %}safe{% elif r.severity == 'Medium' %}caution{% elif r.severity == 'High' %}high-risk{% else %}avoid{% endif %}" style="font-size:.65rem">{{ r.severity }}</span>
+          </div>
+          <div class="text-muted small mt-1">
+            <a href="{% url 'route_detail' r.route.pk %}" class="text-decoration-none">{{ r.route.name|truncatechars:25 }}</a>
+            {% if r.segment %} · {{ r.segment.label }}{% endif %}
+          </div>
+          <div class="text-muted mt-1 d-flex align-items-center gap-2" style="font-size:.72rem">
+            <span>
+              {% if r.reporter_driver %}
+              <i class="fa-solid fa-id-card me-1"></i>{{ r.reporter_driver.full_name }}
+              {% else %}Anonymous{% endif %}
+            </span>
+            <span>· {{ r.created_at|timesince }} ago</span>
+          </div>
           {% include "partials/report_ai_badge.html" with report=r %}
         </div>
         {% empty %}
-        <p class="text-muted">No reports yet.</p>
+        <p class="text-muted small text-center py-3">No reports yet.</p>
         {% endfor %}
       </div>
-      <div class="card rw-card p-4 mt-3 bg-light">
-        <h6 class="fw-bold">Prefer SMS/WhatsApp?</h6>
-        <p class="small mb-2">Format: <code>TYPE#Location#Route</code></p>
-        <p class="small text-muted mb-0">Example: <code>ACCIDENT#Chalinze#Dar es Salaam to Morogoro</code></p>
-        <a href="{% url 'simulate_message' %}" class="btn btn-outline-success btn-sm mt-2">Try Simulator →</a>
+
+      <div class="card rw-card p-3" style="background:#f8fafc">
+        <h6 class="fw-bold small mb-2"><i class="fa-solid fa-mobile-screen-button me-1"></i>Report via SMS/WhatsApp</h6>
+        <p class="small text-muted mb-1">Format: <code>TYPE#Location#Route</code></p>
+        <p class="small text-muted mb-2">Example: <code>ACCIDENT#Chalinze#Morogoro</code></p>
+        <a href="{% url 'simulate_message' %}" class="btn btn-rw-ghost btn-sm">Try Demo →</a>
       </div>
     </div>
   </div>

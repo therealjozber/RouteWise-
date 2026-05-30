@@ -82,6 +82,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
+LOGIN_URL = "/driver/login/"
+LOGIN_REDIRECT_URL = "/driver/profile/"
+LOGOUT_REDIRECT_URL = "/"
+
 # External services (read from environment only)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")

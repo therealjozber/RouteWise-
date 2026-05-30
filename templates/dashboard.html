@@ -24,6 +24,21 @@
 
 <div class="container pb-5">
 
+  <!-- ── Pending approval alert (trusted drivers only) ── -->
+  {% if pending_reports %}
+  <div class="alert mb-4 rounded-3" style="background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.4)" role="alert">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div>
+        <strong style="color:#b45309"><i class="fa-solid fa-clock me-1"></i>{{ pending_reports|length }} report{{ pending_reports|pluralize }} awaiting your approval</strong>
+        <span class="text-muted small ms-2">Anonymous community reports need a trusted driver to review.</span>
+      </div>
+      <a href="{% url 'driver_profile' %}" class="btn btn-sm ms-auto" style="background:rgba(255,209,102,.3);color:#b45309;border:1px solid rgba(255,209,102,.6)">
+        Review Queue →
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ── Stat Cards ── -->
   <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">

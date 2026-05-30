@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}{{ viewed_driver.full_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <nav aria-label="breadcrumb" class="mb-2">
+      <ol class="breadcrumb mb-0" style="font-size:.82rem">
+        <li class="breadcrumb-item"><a href="{% url 'driver_directory' %}">Drivers</a></li>
+        <li class="breadcrumb-item active">{{ viewed_driver.full_name }}</li>
+      </ol>
+    </nav>
+    <h1>{{ viewed_driver.full_name }}</h1>
+    <p class="text-muted mb-0">{{ viewed_driver.vehicle_type }} · {{ viewed_driver.transport_type }} · {{ viewed_driver.main_route }}</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row g-4">
+
+    <!-- ── Left: profile card + rate form ── -->
+    <div class="col-lg-4">
+      <div class="card rw-card p-4 mb-4">
+        <div class="text-center mb-3">
+          <div style="width:80px;height:80px;background:linear-gradient(135deg,var(--rw-primary),var(--rw-accent));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.2rem;color:#fff;font-weight:700;margin:0 auto .75rem">
+            {{ viewed_driver.full_name|first|upper }}
+          </div>
+          <h4 class="fw-bold mb-0">{{ viewed_driver.full_name }}</h4>
+          {% if viewed_driver.bio %}
+          <p class="text-muted small mt-1">{{ viewed_driver.bio }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Trust score display -->
+        <div class="text-center p-3 rounded-3 mb-3" style="background:{% if viewed_driver.trust_level == 'Elite' %}rgba(6,214,160,.08){% elif viewed_driver.trust_level == 'Trusted' %}rgba(255,209,102,.1){% else %}rgba(239,71,111,.08){% endif %}">
+          <div style="font-size:2.5rem;font-weight:900;line-height:1;color:{% if viewed_driver.trust_score >= 4 %}var(--rw-safe){% elif viewed_driver.trust_score >= 3 %}var(--rw-caution){% else %}var(--rw-high){% endif %}">
+            {{ viewed_driver.trust_score|floatformat:1 }}
+          </div>
+          <div style="font-size:1.2rem;color:var(--rw-caution)">
+            {% for i in "12345" %}{% if forloop.counter <= viewed_driver.trust_score %}★{% else %}☆{% endif %}{% endfor %}
+          </div>
+          <div class="fw-bold small">{{ viewed_driver.trust_level }} Driver</div>
+          <div class="text-muted" style="font-size:.75rem">{{ viewed_driver.ratings_count }} peer rating{{ viewed_driver.ratings_count|pluralize }}</div>
+        </div>
+
+        {% if viewed_driver.is_trusted %}
+        <div class="p-2 rounded-3 text-center mb-3" style="background:rgba(6,214,160,.08);border:1px solid rgba(6,214,160,.2)">
+          <i class="fa-solid fa-shield-halved me-1" style="color:var(--rw-safe)"></i>
+          <span class="small fw-semibold" style="color:#059669">Trusted — can approve reports</span>
+        </div>
+        {% endif %}
+
+        <div class="small">
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">Reports</span><strong>{{ viewed_driver.reported_count }}</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">Vehicle</span><strong>{{ viewed_driver.vehicle_type }}</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2">
+            <span class="text-muted">Joined</span><strong class="small">{{ viewed_driver.created_at|date:"M Y" }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rating form -->
+      {% if current_driver and current_driver != viewed_driver %}
+      <div class="card rw-card p-4">
+        <h6 class="fw-bold mb-3">
+          <i class="fa-solid fa-star me-1" style="color:var(--rw-caution)"></i>
+          {% if existing_rating %}Update Your Rating{% else %}Rate This Driver{% endif %}
+        </h6>
+        <form method="post" action="{% url 'rate_driver' viewed_driver.pk %}">
+          {% csrf_token %}
+
+          <!-- Star selector -->
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Score (1–5 stars)</label>
+            <div class="d-flex gap-2" id="star-row">
+              {% for val in "12345" %}
+              <button type="button" class="star-btn"
+                      data-val="{{ forloop.counter }}"
+                      onclick="selectStar({{ forloop.counter }})"
+                      style="background:none;border:none;font-size:1.8rem;color:{% if existing_rating and forloop.counter <= existing_rating.score %}var(--rw-caution){% else %}#cbd5e1{% endif %};cursor:pointer;padding:0;transition:color .1s"
+                      title="{{ forloop.counter }} star{{ forloop.counter|pluralize }}">★</button>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="score" id="score-input" value="{{ existing_rating.score|default:3 }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Comment <span class="text-muted fw-normal">(optional)</span></label>
+            <textarea name="comment" class="form-control" rows="2"
+              placeholder="Describe their report quality...">{{ existing_rating.comment|default:"" }}</textarea>
+          </div>
+
+          <button type="submit" class="btn btn-rw-primary btn-sm w-100">
+            <i class="fa-solid fa-star me-1"></i>
+            {% if existing_rating %}Update Rating{% else %}Submit Rating{% endif %}
+          </button>
+        </form>
+      </div>
+      {% elif not current_driver %}
+      <div class="card rw-card p-4 text-center text-muted small">
+        <i class="fa-solid fa-lock mb-2 d-block" style="font-size:1.5rem;opacity:.3"></i>
+        <a href="{% url 'driver_login' %}" class="fw-semibold">Log in</a> to rate this driver.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Right: reports + peer ratings ── -->
+    <div class="col-lg-8">
+
+      <!-- Recent incident reports -->
+      <div class="card rw-card p-4 mb-4">
+        <h5 class="fw-bold mb-3">
+          <i class="fa-solid fa-flag me-2" style="color:var(--rw-high)"></i>
+          Recent Reports by {{ viewed_driver.full_name }}
+        </h5>
+        {% for r in reports %}
+        <div class="py-2 border-bottom">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <span class="incident-pill incident-{{ r.incident_type|lower|slugify }}">{{ r.incident_type }}</span>
+              <strong class="ms-2 small">{{ r.location_name }}</strong>
+              <a href="{% url 'route_detail' r.route.pk %}" class="text-muted small text-decoration-none ms-1">
+                · {{ r.route.name|truncatechars:25 }}
+              </a>
+              <div class="text-muted small mt-1">{{ r.description|truncatechars:90 }}</div>
+            </div>
+            <div class="d-flex gap-1 flex-wrap">
+              <span class="status-badge badge-{% if r.severity == 'Low' %}safe{% elif r.severity == 'Medium' %}caution{% elif r.severity == 'High' %}high-risk{% else %}avoid{% endif %}" style="font-size:.65rem">{{ r.severity }}</span>
+              <span class="text-muted small">{{ r.created_at|timesince }} ago</span>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small text-center py-3">No incident reports yet.</p>
+        {% endfor %}
+      </div>
+
+      <!-- Peer ratings received -->
+      <div class="card rw-card p-4">
+        <h5 class="fw-bold mb-3">
+          <i class="fa-solid fa-star me-2" style="color:var(--rw-caution)"></i>Peer Ratings
+        </h5>
+        {% for rating in ratings %}
+        <div class="py-3 border-bottom">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <a href="{% url 'driver_public_profile' rating.rater.pk %}" class="fw-semibold small text-decoration-none">
+                {{ rating.rater.full_name }}
+              </a>
+              {% if rating.comment %}
+              <p class="text-muted small mb-0 mt-1">{{ rating.comment }}</p>
+              {% endif %}
+              <div class="text-muted mt-1" style="font-size:.72rem">{{ rating.updated_at|timesince }} ago</div>
+            </div>
+            <div style="font-size:1.1rem;color:var(--rw-caution);white-space:nowrap">
+              {% for i in "12345" %}{% if forloop.counter <= rating.score %}★{% else %}☆{% endif %}{% endfor %}
+              <span class="text-muted small">({{ rating.score }}/5)</span>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small text-center py-3">No peer ratings yet.</p>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var currentScore = parseInt(document.getElementById('score-input').value) || 3;
+
+function selectStar(val) {
+  currentScore = val;
+  document.getElementById('score-input').value = val;
+  document.querySelectorAll('.star-btn').forEach(function(btn) {
+    btn.style.color = parseInt(btn.dataset.val) <= val ? 'var(--rw-caution)' : '#cbd5e1';
+  });
+}
+
+// Init star display
+selectStar(currentScore);
+</script>
+{% endblock %}

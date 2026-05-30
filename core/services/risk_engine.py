@@ -211,7 +211,7 @@ def calculate_route_risk(route):
             )
         route_score, route_status, route_delay = _aggregate_route_from_segments(segments_data)
     else:
-        reports = list(route.incidents.order_by("-created_at")[:50])
+        reports = list(route.incidents.filter(approved=True).order_by("-created_at")[:50])
         route_score, route_status, route_delay, top = _score_reports(reports)
         segments_data = []
 

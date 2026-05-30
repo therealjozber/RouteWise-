@@ -1,7 +1,42 @@
+from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
-from core.models import Driver, TransportRoute, RouteSegment, IncidentReport
+from core.models import Driver, DriverRating, TransportRoute, RouteSegment, IncidentReport
 from core.segment_utils import find_closest_segment
 from core.services.risk_engine import apply_risk_to_route
+
+
+# ── Driver accounts (username, password, full_name) ───────────────
+# All non-admin passwords follow pattern: RouteWise + 2024!
+DRIVER_ACCOUNTS = [
+    ("jmwakasege",  "RouteWise2024!", "James Mwakasege"),
+    ("ahassan",     "RouteWise2024!", "Amina Hassan"),
+    ("pkimaro",     "RouteWise2024!", "Peter Kimaro"),
+    ("fsaidi",      "RouteWise2024!", "Fatuma Saidi"),
+    ("rngonyani",   "RouteWise2024!", "Robert Ngonyani"),
+    ("gmushi",      "RouteWise2024!", "Grace Mushi"),
+    ("sjuma",       "RouteWise2024!", "Salim Juma"),
+    ("nkweka",      "RouteWise2024!", "Neema Kweka"),
+    ("homari",      "RouteWise2024!", "Hassan Omari"),
+    ("zmfinanga",   "RouteWise2024!", "Zawadi Mfinanga"),
+    ("elyimo",      "RouteWise2024!", "Emmanuel Lyimo"),
+    ("rmassawe",    "RouteWise2024!", "Rehema Massawe"),
+]
+
+# Peer ratings between drivers (rater_name, rated_name, score, comment)
+DRIVER_RATINGS = [
+    ("Amina Hassan",    "James Mwakasege", 5, "Very accurate accident reports near Chalinze"),
+    ("Peter Kimaro",    "James Mwakasege", 4, "Reliable, always reports with exact location"),
+    ("Grace Mushi",     "James Mwakasege", 5, "Best reporter on the Morogoro corridor"),
+    ("James Mwakasege", "Amina Hassan",    4, "Good reports, sometimes delayed"),
+    ("Robert Ngonyani", "Amina Hassan",    5, "Excellent flood reports near Kilosa"),
+    ("James Mwakasege", "Peter Kimaro",    5, "Top driver, accurate Arusha route info"),
+    ("Amina Hassan",    "Peter Kimaro",    4, "Helpful checkpoint reports"),
+    ("Peter Kimaro",    "Fatuma Saidi",    3, "Reports are okay but need more detail"),
+    ("Grace Mushi",     "Salim Juma",      5, "Excellent reports on southern corridor"),
+    ("Salim Juma",      "Grace Mushi",     4, "Consistent and reliable"),
+    ("Hassan Omari",    "Robert Ngonyani", 5, "Best agriculture route reporter"),
+    ("Neema Kweka",     "Emmanuel Lyimo",  4, "Good border crossing updates"),
+]
 
 
 ROUTES = [
@@ -186,8 +221,15 @@ class Command(BaseCommand):
         if options["clear"]:
             TransportRoute.objects.all().delete()
             Driver.objects.all().delete()
+            User.objects.filter(is_superuser=False).delete()
             self.stdout.write("Cleared existing data.")
 
+        # ── Superuser for admin ─────────────────────────────────
+        if not User.objects.filter(username="admin").exists():
+            User.objects.create_superuser("admin", "admin@routewise.tz", "admin123")
+            self.stdout.write("Created superuser: admin / admin123")
+
+        # ── Routes ──────────────────────────────────────────────
         route_map = {}
         for name, origin, dest, dist, est in ROUTES:
             route, _ = TransportRoute.objects.get_or_create(
@@ -206,52 +248,88 @@ class Command(BaseCommand):
                 },
             )
             route_map[name] = route
-
             RouteSegment.objects.filter(route=route).delete()
-            seg_defs = ROUTE_SEGMENTS.get(name, [])
-            for i, (f, t, d_km, est_seg) in enumerate(seg_defs, start=1):
+            for i, (f, t, d_km, est_seg) in enumerate(ROUTE_SEGMENTS.get(name, []), start=1):
                 RouteSegment.objects.create(
-                    route=route,
-                    from_location=f,
-                    to_location=t,
-                    order=i,
-                    distance_km=d_km,
-                    estimated_time=est_seg,
+                    route=route, from_location=f, to_location=t,
+                    order=i, distance_km=d_km, estimated_time=est_seg,
                     notes=f"Section {i}: {f} to {t}.",
                 )
 
-        for full_name, phone, vehicle, transport, main_route in DRIVERS:
-            Driver.objects.get_or_create(
-                phone_number=phone,
+        # ── Driver accounts (User + Driver) ─────────────────────
+        # Build name→driver map for ratings later
+        name_to_driver = {}
+        for (username, password, full_name), (d_full, phone, vehicle, transport, main_route) in zip(
+            DRIVER_ACCOUNTS, DRIVERS
+        ):
+            # Create or update User
+            user, u_created = User.objects.get_or_create(
+                username=username,
                 defaults={
-                    "full_name": full_name,
-                    "vehicle_type": vehicle,
-                    "transport_type": transport,
-                    "main_route": main_route,
+                    "first_name": full_name.split()[0],
+                    "last_name": " ".join(full_name.split()[1:]),
                 },
             )
+            if u_created or not user.has_usable_password():
+                user.set_password(password)
+                user.save()
 
+            # Create or update Driver, linked to User
+            driver, d_created = Driver.objects.get_or_create(
+                phone_number=phone,
+                defaults={
+                    "full_name":     full_name,
+                    "vehicle_type":  vehicle,
+                    "transport_type": transport,
+                    "main_route":    main_route,
+                    "trust_score":   5.0,
+                    "ratings_count": 0,
+                },
+            )
+            if driver.user is None:
+                driver.user = user
+                driver.save(update_fields=["user"])
+
+            name_to_driver[full_name] = driver
+
+        # ── Incidents (all approved — seed data is trusted) ──────
         for route_name, itype, loc, sev, desc, verified in INCIDENTS:
             route = route_map.get(route_name)
             if not route:
                 continue
             segment = find_closest_segment(route, loc)
             IncidentReport.objects.get_or_create(
-                route=route,
-                location_name=loc,
-                incident_type=itype,
+                route=route, location_name=loc, incident_type=itype,
                 defaults={
-                    "segment": segment,
-                    "reporter_name": "Community Reporter",
+                    "segment":        segment,
+                    "reporter_name":  "Community Reporter",
                     "reporter_phone": "+255700000000",
-                    "description": desc,
-                    "severity": sev,
+                    "description":    desc,
+                    "severity":       sev,
                     "verified_count": verified,
+                    "approved":       True,
+                    "needs_approval": False,
                 },
             )
 
+        # ── Risk recalculation ───────────────────────────────────
         for route in TransportRoute.objects.all():
             apply_risk_to_route(route)
+
+        # ── Driver ratings ───────────────────────────────────────
+        DriverRating.objects.all().delete()
+        for rater_name, rated_name, score, comment in DRIVER_RATINGS:
+            rater = name_to_driver.get(rater_name)
+            rated = name_to_driver.get(rated_name)
+            if rater and rated and rater != rated:
+                DriverRating.objects.get_or_create(
+                    rater=rater, rated=rated,
+                    defaults={"score": score, "comment": comment},
+                )
+
+        # Recalculate trust scores from ratings
+        for driver in Driver.objects.all():
+            driver.recalculate_trust()
 
         self.stdout.write(
             self.style.SUCCESS(

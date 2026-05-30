@@ -55,10 +55,10 @@ def find_closest_segment(route, location_name: str):
 
 
 def reports_for_segment(segment):
-    """Incidents tied to this segment or matching its locations."""
+    """Approved incidents tied to this segment or matching its locations."""
     from .models import IncidentReport
 
-    qs = IncidentReport.objects.filter(route=segment.route)
+    qs = IncidentReport.objects.filter(route=segment.route, approved=True)
     tied = qs.filter(segment=segment)
     loose = qs.filter(segment__isnull=True)
     matched = []
@@ -126,7 +126,7 @@ def build_route_map_data(route):
                 waypoints.append({"name": loc, "lat": c[0], "lng": c[1], "status": None})
 
     incident_markers = []
-    for r in route.incidents.all()[:30]:
+    for r in route.incidents.filter(approved=True)[:30]:
         coords = get_coords(r.location_name)
         if not coords and r.segment:
             coords = get_coords(r.segment.from_location)
@@ -173,7 +173,7 @@ def build_all_routes_map_data():
                 })
 
         incidents = []
-        for r in route.incidents.all()[:15]:
+        for r in route.incidents.filter(approved=True)[:15]:
             coords = get_coords(r.location_name)
             if not coords and r.segment:
                 coords = get_coords(r.segment.from_location)

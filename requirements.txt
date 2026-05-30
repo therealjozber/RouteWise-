@@ -1,4 +1,4 @@
 Django>=5.0,<7.0
 python-dotenv>=1.0.0
 google-genai>=1.0.0
-africastalking>=1.2.6
+africastalking>=2.0.2

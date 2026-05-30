@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Driver Directory{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <h1><i class="fa-solid fa-users me-2" style="color:var(--rw-accent)"></i>Driver Directory</h1>
+      <p class="text-muted mb-0">Community drivers ranked by trust score · Rate drivers based on their incident reports</p>
+    </div>
+    {% if not request.user.is_authenticated %}
+    <a href="{% url 'driver_signup' %}" class="btn btn-rw-primary btn-sm">
+      <i class="fa-solid fa-plus me-1"></i>Join as Driver
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="container pb-5">
+
+  <div class="row g-3">
+    {% for d in drivers %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card rw-card h-100" style="overflow:hidden">
+        <div style="height:4px;background:{% if d.trust_score >= 4.5 %}var(--rw-safe){% elif d.trust_score >= 3.5 %}var(--rw-caution){% elif d.trust_score >= 2.5 %}var(--rw-high){% else %}var(--rw-avoid){% endif %}"></div>
+        <div class="p-4">
+          <div class="d-flex align-items-start gap-3">
+            <div style="width:48px;height:48px;background:linear-gradient(135deg,var(--rw-primary),var(--rw-accent));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:#fff;font-weight:700;flex-shrink:0">
+              {{ d.full_name|first|upper }}
+            </div>
+            <div class="flex-grow-1 min-width-0">
+              <a href="{% url 'driver_public_profile' d.pk %}" class="fw-bold text-decoration-none text-primary" style="font-size:.95rem">{{ d.full_name }}</a>
+              <div class="text-muted small">{{ d.vehicle_type }} · {{ d.transport_type }}</div>
+              <div class="text-muted small text-truncate">{{ d.main_route }}</div>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-between mt-3">
+            <div>
+              <span style="font-size:1rem;color:{% if d.trust_score >= 4 %}var(--rw-safe){% elif d.trust_score >= 3 %}var(--rw-caution){% else %}var(--rw-high){% endif %}">
+                {% for i in "12345" %}{% if forloop.counter <= d.trust_score %}★{% else %}☆{% endif %}{% endfor %}
+              </span>
+              <span class="text-muted small ms-1">{{ d.trust_score|floatformat:1 }}</span>
+            </div>
+            <span class="status-badge badge-{{ d.trust_color }}" style="font-size:.65rem">{{ d.trust_level }}</span>
+          </div>
+
+          <div class="d-flex gap-3 mt-2 small text-muted">
+            <span><i class="fa-solid fa-flag me-1"></i>{{ d.report_count|default:d.reported_count }} reports</span>
+            <span><i class="fa-solid fa-star me-1"></i>{{ d.ratings_count }} ratings</span>
+          </div>
+
+          {% if d.is_trusted %}
+          <div class="mt-2" style="font-size:.72rem;color:#059669">
+            <i class="fa-solid fa-shield-halved me-1"></i>Can approve community reports
+          </div>
+          {% endif %}
+
+          <a href="{% url 'driver_public_profile' d.pk %}" class="btn btn-rw-ghost btn-sm w-100 mt-3">
+            View Profile & Rate
+          </a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5 text-muted">
+      <i class="fa-solid fa-users fa-3x mb-3 d-block" style="opacity:.2"></i>
+      No registered drivers yet. <a href="{% url 'driver_signup' %}">Be the first!</a>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

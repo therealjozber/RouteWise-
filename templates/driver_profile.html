@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div>
+      <h1><i class="fa-solid fa-id-card me-2" style="color:var(--rw-accent)"></i>My Driver Profile</h1>
+      <p class="text-muted mb-0">{{ driver.full_name }} · {{ driver.vehicle_type }} · {{ driver.transport_type }}</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'report_incident' %}" class="btn btn-rw-primary btn-sm">
+        <i class="fa-solid fa-flag me-1"></i>Report Incident
+      </a>
+      <a href="{% url 'driver_directory' %}" class="btn btn-rw-ghost btn-sm">
+        <i class="fa-solid fa-users me-1"></i>Driver Directory
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row g-4">
+
+    <!-- ── Profile card ── -->
+    <div class="col-lg-4">
+      <div class="card rw-card p-4 mb-4">
+        <div class="text-center mb-3">
+          <div style="width:72px;height:72px;background:linear-gradient(135deg,var(--rw-primary),var(--rw-accent));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto .75rem">
+            {{ driver.full_name|first|upper }}
+          </div>
+          <h5 class="fw-bold mb-0">{{ driver.full_name }}</h5>
+          <div class="text-muted small">@{{ request.user.username }}</div>
+        </div>
+
+        <!-- Trust score -->
+        <div class="text-center p-3 rounded-3 mb-3" style="background:{% if driver.trust_level == 'Elite' %}rgba(6,214,160,.08){% elif driver.trust_level == 'Trusted' %}rgba(255,209,102,.1){% else %}rgba(239,71,111,.08){% endif %}">
+          <div style="font-size:1.8rem;font-weight:900;color:{% if driver.trust_score >= 4 %}var(--rw-safe){% elif driver.trust_score >= 3 %}var(--rw-caution){% else %}var(--rw-high){% endif %}">
+            {{ driver.trust_score|floatformat:1 }}★
+          </div>
+          <div class="small fw-bold">{{ driver.trust_level }} Driver</div>
+          <div class="text-muted" style="font-size:0.75rem">{{ driver.ratings_count }} rating{{ driver.ratings_count|pluralize }}</div>
+        </div>
+
+        {% if driver.is_trusted %}
+        <div class="p-2 rounded-3 text-center mb-3" style="background:rgba(6,214,160,.08);border:1px solid rgba(6,214,160,.2)">
+          <i class="fa-solid fa-shield-halved me-1" style="color:var(--rw-safe)"></i>
+          <span class="small fw-semibold" style="color:#059669">Trusted — can approve reports</span>
+        </div>
+        {% endif %}
+
+        <div class="small">
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">Phone</span><strong>{{ driver.phone_number }}</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">Vehicle</span><strong>{{ driver.vehicle_type }}</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">Transport</span><strong>{{ driver.transport_type }}</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">Main route</span>
+            <strong class="text-end" style="max-width:140px;font-size:0.78rem">{{ driver.main_route }}</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2">
+            <span class="text-muted">Reports</span><strong>{{ driver.reported_count }}</strong>
+          </div>
+        </div>
+        {% if driver.bio %}
+        <div class="divider-line mt-2 mb-2"></div>
+        <p class="small text-muted mb-0">{{ driver.bio }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Stats -->
+      <div class="card rw-card p-4">
+        <h6 class="fw-bold mb-3 text-muted text-uppercase small" style="letter-spacing:.06em">Contribution Stats</h6>
+        <div class="row g-2">
+          <div class="col-6 text-center p-2 rounded-3" style="background:#f8fafc">
+            <div class="fw-bold" style="font-size:1.5rem;color:var(--rw-primary)">{{ driver.reported_count }}</div>
+            <div class="text-muted" style="font-size:0.72rem">Approved Reports</div>
+          </div>
+          <div class="col-6 text-center p-2 rounded-3" style="background:#f8fafc">
+            <div class="fw-bold" style="font-size:1.5rem;color:var(--rw-caution)">{{ pending_mine }}</div>
+            <div class="text-muted" style="font-size:0.72rem">Pending Approval</div>
+          </div>
+          <div class="col-6 text-center p-2 rounded-3" style="background:#f8fafc">
+            <div class="fw-bold" style="font-size:1.5rem;color:var(--rw-safe)">{{ driver.approved_count }}</div>
+            <div class="text-muted" style="font-size:0.72rem">Reports Approved</div>
+          </div>
+          <div class="col-6 text-center p-2 rounded-3" style="background:#f8fafc">
+            <div class="fw-bold" style="font-size:1.5rem;color:var(--rw-accent-dark)">{{ driver.ratings_count }}</div>
+            <div class="text-muted" style="font-size:0.72rem">Ratings Received</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right content ── -->
+    <div class="col-lg-8">
+
+      <!-- Pending reports to review (trusted drivers only) -->
+      {% if pending_to_review %}
+      <div class="card rw-card p-4 mb-4" style="border-left:4px solid var(--rw-caution)">
+        <h5 class="fw-bold mb-3">
+          <i class="fa-solid fa-clock me-2" style="color:var(--rw-caution)"></i>
+          Pending Approval Queue
+          <span class="badge rounded-pill ms-2" style="background:var(--rw-caution);color:#1e293b;font-size:.7rem">{{ pending_to_review|length }}</span>
+        </h5>
+        <p class="small text-muted mb-3">As a trusted driver, you can approve or reject anonymous reports.</p>
+        {% for r in pending_to_review %}
+        <div class="border rounded-3 p-3 mb-2 bg-light">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <span class="incident-pill incident-{{ r.incident_type|lower|slugify }}">{{ r.incident_type }}</span>
+              <strong class="ms-2 small">{{ r.location_name }}</strong>
+              <span class="text-muted small ms-1">on {{ r.route.name|truncatechars:25 }}</span>
+              <div class="text-muted small mt-1">{{ r.description|truncatechars:80 }}</div>
+              <div class="text-muted mt-1" style="font-size:0.72rem">
+                <i class="fa-regular fa-clock me-1"></i>{{ r.created_at|timesince }} ago ·
+                Anonymous report
+              </div>
+            </div>
+            <div class="d-flex gap-2 flex-shrink-0">
+              <form method="post" action="{% url 'approve_incident' r.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-sm" style="background:rgba(6,214,160,.12);color:#059669;border:1px solid rgba(6,214,160,.3)">
+                  <i class="fa-solid fa-check me-1"></i>Approve
+                </button>
+              </form>
+              <form method="post" action="{% url 'reject_incident' r.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="reason" value="Not accurate or lacks detail">
+                <button class="btn btn-sm" style="background:rgba(239,71,111,.1);color:#dc2626;border:1px solid rgba(239,71,111,.25)">
+                  <i class="fa-solid fa-xmark me-1"></i>Reject
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- My incident reports -->
+      <div class="card rw-card p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0"><i class="fa-solid fa-flag me-2" style="color:var(--rw-high)"></i>My Reports</h5>
+          <a href="{% url 'report_incident' %}" class="btn btn-rw-primary btn-sm">+ New Report</a>
+        </div>
+        {% for r in my_reports %}
+        <div class="py-2 border-bottom d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <span class="incident-pill incident-{{ r.incident_type|lower|slugify }}">{{ r.incident_type }}</span>
+            <strong class="ms-2 small">{{ r.location_name }}</strong>
+            <span class="text-muted small">· {{ r.route.name|truncatechars:22 }}</span>
+            <div class="text-muted mt-1" style="font-size:0.72rem">{{ r.created_at|timesince }} ago</div>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            {% if r.approved %}
+            <span class="status-badge badge-safe" style="font-size:.65rem">Published</span>
+            {% elif r.needs_approval %}
+            <span class="status-badge badge-caution" style="font-size:.65rem">Pending</span>
+            {% else %}
+            <span class="status-badge badge-avoid" style="font-size:.65rem">Rejected</span>
+            {% endif %}
+            <span class="status-badge badge-{% if r.severity == 'Low' %}safe{% elif r.severity == 'Medium' %}caution{% elif r.severity == 'High' %}high-risk{% else %}avoid{% endif %}" style="font-size:.65rem">{{ r.severity }}</span>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small text-center py-3">No reports yet. <a href="{% url 'report_incident' %}">Report your first incident!</a></p>
+        {% endfor %}
+      </div>
+
+      <!-- Ratings received -->
+      <div class="card rw-card p-4">
+        <h5 class="fw-bold mb-3"><i class="fa-solid fa-star me-2" style="color:var(--rw-caution)"></i>Ratings From Peers</h5>
+        {% for rating in my_ratings %}
+        <div class="py-2 border-bottom">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <a href="{% url 'driver_public_profile' rating.rater.pk %}" class="fw-semibold small text-decoration-none">
+                {{ rating.rater.full_name }}
+              </a>
+              <div class="text-muted small">{{ rating.comment|default:"No comment" }}</div>
+              <div class="text-muted mt-1" style="font-size:0.72rem">{{ rating.updated_at|timesince }} ago</div>
+            </div>
+            <div style="font-size:1.1rem;color:var(--rw-caution)">
+              {% for i in "12345" %}{% if forloop.counter <= rating.score %}★{% else %}☆{% endif %}{% endfor %}
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small text-center py-3">No ratings yet. Other drivers will rate you as you report incidents.</p>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:680px">
+  <div class="text-center mb-4">
+    <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--rw-primary),var(--rw-accent));border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.8rem">🚛</div>
+    <h1 class="h3 fw-bold text-primary">Join RouteWise TZ</h1>
+    <p class="text-muted">Create your driver account. You start with a maximum <strong>5★ trust score</strong>.</p>
+  </div>
+
+  <div class="card rw-card p-4 p-md-5">
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger rounded-3">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="row g-3">
+        <!-- Account credentials -->
+        <div class="col-12">
+          <h6 class="fw-bold text-muted text-uppercase small mb-3" style="letter-spacing:.06em">Account Credentials</h6>
+        </div>
+        <div class="col-md-12">
+          <label class="form-label fw-semibold small">Username</label>
+          {{ form.username }}
+          {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>{% endif %}
+          <div class="form-text">{{ form.username.help_text }}</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">Password</label>
+          {{ form.password1 }}
+          {% if form.password1.errors %}<div class="text-danger small mt-1">{{ form.password1.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">Confirm Password</label>
+          {{ form.password2 }}
+          {% if form.password2.errors %}<div class="text-danger small mt-1">{{ form.password2.errors.0 }}</div>{% endif %}
+        </div>
+
+        <!-- Driver details -->
+        <div class="col-12 mt-2">
+          <h6 class="fw-bold text-muted text-uppercase small mb-3" style="letter-spacing:.06em">Driver Profile</h6>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">Full Name</label>
+          {{ form.full_name }}
+          {% if form.full_name.errors %}<div class="text-danger small mt-1">{{ form.full_name.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">Phone Number</label>
+          {{ form.phone_number }}
+          {% if form.phone_number.errors %}<div class="text-danger small mt-1">{{ form.phone_number.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">Vehicle Type</label>
+          {{ form.vehicle_type }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">Transport Type</label>
+          {{ form.transport_type }}
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold small">Main Route</label>
+          {{ form.main_route }}
+          <div class="form-text">{{ form.main_route.help_text }}</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold small">Bio <span class="text-muted fw-normal">(optional)</span></label>
+          {{ form.bio }}
+        </div>
+      </div>
+
+      <!-- Trust score explainer -->
+      <div class="mt-4 p-3 rounded-3" style="background:rgba(6,214,160,.06);border:1px solid rgba(6,214,160,.2)">
+        <div class="d-flex gap-3 align-items-start">
+          <span style="font-size:1.4rem">⭐</span>
+          <div class="small">
+            <strong style="color:#059669">You start with 5★ maximum trust</strong><br>
+            <span class="text-muted">
+              Your trust score reflects your report quality. Other drivers rate you based on accuracy.
+              Trusted drivers (≥3.5★) can approve anonymous incident reports from the public.
+              Report accurately, stay trusted!
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-rw-primary w-100 mt-4 py-2" style="font-size:1rem">
+        <i class="fa-solid fa-id-card me-2"></i>Create Driver Account
+      </button>
+    </form>
+
+    <p class="text-center text-muted small mt-3 mb-0">
+      Already have an account?
+      <a href="{% url 'driver_login' %}" class="fw-semibold">Log in here</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

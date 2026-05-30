@@ -63,9 +63,32 @@
             <a class="nav-link {% if request.resolver_match.url_name == 'at_services' %}active{% endif %}"
                href="{% url 'at_services' %}"
                style="background:rgba(255,165,0,.15);border:1px solid rgba(255,165,0,.3);border-radius:6px;color:#ffd580!important">
-              <i class="fa-solid fa-tower-broadcast"></i> AT Services
+              <i class="fa-solid fa-tower-broadcast"></i> AT
             </a>
           </li>
+          <!-- Auth -->
+          {% if request.user.is_authenticated %}
+          <li class="nav-item ms-lg-2">
+            <a class="nav-link {% if request.resolver_match.url_name == 'driver_profile' %}active{% endif %}"
+               href="{% url 'driver_profile' %}"
+               style="background:rgba(0,180,216,.2);border:1px solid rgba(0,180,216,.4);border-radius:6px;padding:.35rem .75rem!important">
+              <i class="fa-solid fa-user-circle"></i>
+              {% if request.user.driver_profile %}{{ request.user.driver_profile.full_name|truncatechars:14 }}{% else %}Profile{% endif %}
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'driver_logout' %}" style="opacity:.7">
+              <i class="fa-solid fa-right-from-bracket"></i>
+            </a>
+          </li>
+          {% else %}
+          <li class="nav-item ms-lg-2">
+            <a class="nav-link" href="{% url 'driver_login' %}"
+               style="background:rgba(0,180,216,.2);border:1px solid rgba(0,180,216,.4);border-radius:6px;padding:.35rem .75rem!important">
+              <i class="fa-solid fa-right-to-bracket me-1"></i>Login
+            </a>
+          </li>
+          {% endif %}
         </ul>
       </div>
     </div>

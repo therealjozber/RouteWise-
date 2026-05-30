@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Driver Login{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:460px">
+  <div class="text-center mb-4">
+    <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--rw-primary),var(--rw-accent));border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.8rem">🔑</div>
+    <h1 class="h3 fw-bold text-primary">Driver Login</h1>
+    <p class="text-muted small">Sign in to report incidents and manage your profile</p>
+  </div>
+
+  <div class="card rw-card p-4 p-md-5">
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger rounded-3 small">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">Username</label>
+        {{ form.username }}
+        {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>{% endif %}
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold small">Password</label>
+        {{ form.password }}
+        {% if form.password.errors %}<div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>{% endif %}
+      </div>
+      <button type="submit" class="btn btn-rw-primary w-100 py-2" style="font-size:1rem">
+        <i class="fa-solid fa-right-to-bracket me-2"></i>Log In
+      </button>
+    </form>
+
+    <p class="text-center text-muted small mt-3 mb-0">
+      No account yet?
+      <a href="{% url 'driver_signup' %}" class="fw-semibold">Register as a driver</a>
+    </p>
+  </div>
+
+  <!-- Demo credentials box -->
+  <div class="card rw-card p-3 mt-3" style="border-left:4px solid var(--rw-caution)">
+    <div class="fw-bold small mb-2" style="color:#b45309">
+      <i class="fa-solid fa-circle-info me-1"></i>Demo Credentials (Hackathon)
+    </div>
+    <div class="small text-muted" style="font-family:monospace;line-height:1.8">
+      <div><strong>Username:</strong> jmwakasege &nbsp; <strong>Pass:</strong> RouteWise2024!</div>
+      <div><strong>Username:</strong> ahassan &nbsp;&nbsp;&nbsp;&nbsp; <strong>Pass:</strong> RouteWise2024!</div>
+      <div><strong>Username:</strong> pkimaro &nbsp;&nbsp;&nbsp;&nbsp; <strong>Pass:</strong> RouteWise2024!</div>
+      <div class="mt-1"><strong>Admin:</strong> admin / admin123</div>
+    </div>
+    <div class="small text-muted mt-2">All drivers: password = <code>RouteWise2024!</code></div>
+  </div>
+</div>
+{% endblock %}

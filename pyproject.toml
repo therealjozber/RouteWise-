@@ -1,0 +1,11 @@
+[project]
+name = "routewise"
+version = "0.1.0"
+description = "RouteWise TZ - Django app"
+requires-python = ">=3.13"
+dependencies = [
+    "Django>=5.0,<7.0",
+    "python-dotenv>=1.0.0",
+    "google-genai>=1.0.0",
+    "africastalking>=1.2.6",
+]
