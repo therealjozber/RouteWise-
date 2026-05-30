@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class Driver(models.Model):
@@ -149,3 +150,73 @@ class IncidentReport(models.Model):
 
     def __str__(self):
         return f"{self.incident_type} @ {self.location_name}"
+
+
+class ATSubscription(models.Model):
+    """Phone numbers subscribed to receive route alerts via SMS or WhatsApp."""
+    CHANNEL_CHOICES = [("SMS", "SMS"), ("WhatsApp", "WhatsApp")]
+
+    phone_number = models.CharField(max_length=20)
+    route = models.ForeignKey(
+        TransportRoute,
+        on_delete=models.CASCADE,
+        related_name="subscribers",
+    )
+    channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES, default="SMS")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [["phone_number", "route"]]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.phone_number} → {self.route.name} ({self.channel})"
+
+
+class AirtimeReward(models.Model):
+    """Record of airtime sent to drivers/reporters as community contribution rewards."""
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("sent", "Sent"),
+        ("failed", "Failed"),
+    ]
+
+    phone_number = models.CharField(max_length=20)
+    amount = models.DecimalField(max_digits=8, decimal_places=2, default=500)
+    currency_code = models.CharField(max_length=5, default="TZS")
+    reason = models.CharField(max_length=200)
+    incident = models.ForeignKey(
+        IncidentReport,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="airtime_rewards",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    at_response = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.currency_code} {self.amount} → {self.phone_number} ({self.status})"
+
+
+class USSDSession(models.Model):
+    """Tracks USSD sessions for analytics and debugging."""
+    session_id = models.CharField(max_length=100, unique=True)
+    phone_number = models.CharField(max_length=20)
+    service_code = models.CharField(max_length=20, blank=True)
+    network_code = models.CharField(max_length=20, blank=True)
+    final_text = models.TextField(blank=True)
+    action_taken = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"USSD {self.session_id[:16]} – {self.phone_number}"

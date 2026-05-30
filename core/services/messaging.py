@@ -1,127 +1,30 @@
-"""SMS/WhatsApp via Africa's Talking when configured; safe logging fallback."""
+"""
+RouteWise TZ — messaging helpers.
+All actual delivery goes through at_service.ATService.
+This module keeps the public API stable for callers.
+"""
 
 import logging
-
-from django.conf import settings
+from .at_service import at, _find_route_by_hint_ussd
 
 logger = logging.getLogger(__name__)
 
-_at_initialized = False
-_at_sms = None
 
-
-def _get_at_credentials():
-    username = getattr(settings, "AT_USERNAME", "") or ""
-    api_key = getattr(settings, "AT_API_KEY", "") or ""
-    return username.strip(), api_key.strip()
-
-
-def _init_africas_talking():
-    global _at_initialized, _at_sms
-    if _at_initialized:
-        return _at_sms is not None
-
-    username, api_key = _get_at_credentials()
-    if not username or not api_key:
-        logger.info("Africa's Talking credentials not configured.")
-        _at_initialized = True
-        return False
-
-    try:
-        import africastalking
-
-        africastalking.initialize(username, api_key)
-        _at_sms = africastalking.SMS
-        _at_initialized = True
-        logger.info("Africa's Talking SMS initialized for user: %s", username)
-        return True
-    except Exception as exc:
-        logger.warning("Africa's Talking init failed: %s", exc)
-        _at_initialized = True
-        return False
-
+# ── Outbound helpers ──────────────────────────────────────────────
 
 def send_sms_alert(phone_number: str, message: str) -> bool:
-    """Send SMS via Africa's Talking if credentials exist; otherwise log."""
-    phone_number = (phone_number or "").strip()
-    message = (message or "").strip()
-    if not phone_number or not message:
-        return False
-
-    if _init_africas_talking() and _at_sms:
-        try:
-            response = _at_sms.send(message, [phone_number])
-            logger.info("AT SMS sent to %s: %s", phone_number, response)
-            return True
-        except Exception as exc:
-            logger.warning("AT SMS send failed: %s — logging instead.", exc)
-
-    logger.info("[SMS (simulated) -> %s] %s", phone_number, message)
-    print(f"[RouteWise SMS -> {phone_number}] {message}")
-    return True
+    result = at.send_sms(phone_number, message)
+    return result["status"] in ("success", "simulated")
 
 
 def send_whatsapp_alert(phone_number: str, message: str) -> bool:
-    """
-    WhatsApp: log/simulate until official AT WhatsApp endpoint is configured.
-    Never crashes the app.
-    """
-    phone_number = (phone_number or "").strip()
-    message = (message or "").strip()
-    if not phone_number or not message:
-        return False
-
-    logger.info("[WhatsApp (simulated) -> %s] %s", phone_number, message)
-    print(f"[RouteWise WhatsApp -> {phone_number}] {message}")
-    return True
+    result = at.send_whatsapp(phone_number, message)
+    return result["status"] in ("success", "simulated")
 
 
-def parse_incoming_message(text: str) -> dict | None:
-    """
-    Parse: TYPE#Location#Route Name
-    Example: ACCIDENT#Chalinze#Dar es Salaam to Morogoro
-    """
-    text = (text or "").strip()
-    if not text:
-        return None
-
-    parts = text.split("#")
-    if len(parts) < 3:
-        return None
-
-    type_key = parts[0].strip().upper().replace(" ", "")
-    location = parts[1].strip()
-    route_hint = "#".join(parts[2:]).strip()
-
-    type_map = {
-        "ACCIDENT": "Accident",
-        "FLOOD": "Flood",
-        "BADROAD": "Bad Road",
-        "BAD ROAD": "Bad Road",
-        "TRAFFIC": "Traffic Jam",
-        "TRAFFICJAM": "Traffic Jam",
-        "ROADBLOCK": "Road Block",
-        "POLICE": "Police Checkpoint",
-        "CHECKPOINT": "Police Checkpoint",
-        "FUEL": "Fuel Shortage",
-        "THEFT": "Theft Hotspot",
-        "BREAKDOWN": "Vehicle Breakdown",
-    }
-
-    incident_type = type_map.get(type_key)
-    if not incident_type:
-        for key, val in type_map.items():
-            if key in type_key or type_key in key:
-                incident_type = val
-                break
-    if not incident_type:
-        incident_type = "Bad Road"
-
-    return {
-        "incident_type": incident_type,
-        "location_name": location,
-        "route_hint": route_hint,
-    }
+def broadcast_route_sms(route, message: str, severity: str = "Medium") -> dict:
+    """Send to all drivers + subscribers on a route."""
+    return at.broadcast_route_alert(route, message, severity)
 
 
 def build_outgoing_alert(
@@ -135,8 +38,64 @@ def build_outgoing_alert(
 ) -> str:
     seg = f" Section: {segment_label}." if segment_label else ""
     rec = (recommendation or "").strip()
+    # Keep under 160 chars for a single SMS page
+    short_rec = rec[:80] + "…" if len(rec) > 80 else rec
     return (
-        f"RouteWise TZ Alert: {incident_type} reported near {location} "
-        f"on {route_name}.{seg} Risk: {risk_score}/100. "
-        f"Delay: {delay_minutes} mins. {rec}"
+        f"RouteWise TZ: {incident_type} near {location} on {route_name}."
+        f"{seg} Risk:{risk_score}/100 Delay:{delay_minutes}min. {short_rec}"
     )
+
+
+# ── Inbound parsing ───────────────────────────────────────────────
+
+def parse_incoming_message(text: str) -> dict | None:
+    """
+    Parse: TYPE#Location#RouteHint
+    Example: ACCIDENT#Chalinze#Dar es Salaam to Morogoro
+    Returns None if unparseable.
+    """
+    text = (text or "").strip()
+    if not text or "#" not in text:
+        return None
+
+    parts = text.split("#")
+    if len(parts) < 2:
+        return None
+
+    type_key   = parts[0].strip().upper().replace(" ", "")
+    location   = parts[1].strip() if len(parts) > 1 else ""
+    route_hint = "#".join(parts[2:]).strip() if len(parts) > 2 else ""
+
+    type_map = {
+        "ACCIDENT":   "Accident",
+        "FLOOD":      "Flood",
+        "BADROAD":    "Bad Road",
+        "BAD":        "Bad Road",
+        "TRAFFIC":    "Traffic Jam",
+        "TRAFFICJAM": "Traffic Jam",
+        "ROADBLOCK":  "Road Block",
+        "BLOCK":      "Road Block",
+        "POLICE":     "Police Checkpoint",
+        "CHECKPOINT": "Police Checkpoint",
+        "FUEL":       "Fuel Shortage",
+        "THEFT":      "Theft Hotspot",
+        "BREAKDOWN":  "Vehicle Breakdown",
+    }
+
+    incident_type = type_map.get(type_key)
+    if not incident_type:
+        for key, val in type_map.items():
+            if key in type_key or type_key in key:
+                incident_type = val
+                break
+    if not incident_type:
+        incident_type = "Bad Road"
+
+    if not location:
+        return None
+
+    return {
+        "incident_type": incident_type,
+        "location_name": location,
+        "route_hint":    route_hint,
+    }

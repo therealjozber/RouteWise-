@@ -54,9 +54,16 @@
               <i class="fa-solid fa-id-card"></i> Drivers
             </a>
           </li>
-          <li class="nav-item ms-lg-2">
+          <li class="nav-item ms-lg-1">
             <a class="nav-link nav-simulate {% if request.resolver_match.url_name == 'simulate_message' %}active{% endif %}" href="{% url 'simulate_message' %}">
               <i class="fa-solid fa-mobile-screen-button"></i> Demo SMS
+            </a>
+          </li>
+          <li class="nav-item ms-lg-1">
+            <a class="nav-link {% if request.resolver_match.url_name == 'at_services' %}active{% endif %}"
+               href="{% url 'at_services' %}"
+               style="background:rgba(255,165,0,.15);border:1px solid rgba(255,165,0,.3);border-radius:6px;color:#ffd580!important">
+              <i class="fa-solid fa-tower-broadcast"></i> AT Services
             </a>
           </li>
         </ul>

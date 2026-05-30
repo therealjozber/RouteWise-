@@ -1,60 +1,219 @@
 {% extends "base.html" %}
-{% block title %}Simulate SMS/WhatsApp{% endblock %}
+{% block title %}SMS / WhatsApp Demo{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <div class="container">
-    <h1 class="h2 fw-bold text-primary mb-1">SMS / WhatsApp Simulator</h1>
-    <p class="text-muted mb-0">Hackathon MVP — parse incoming messages and generate route alerts</p>
+  <div class="container d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div>
+      <h1><i class="fa-solid fa-mobile-screen-button me-2" style="color:var(--rw-accent)"></i>SMS / WhatsApp Demo</h1>
+      <p class="text-muted mb-0">Simulate driver messages · AI parses and routes · Africa's Talking delivers alerts</p>
+    </div>
+    <a href="{% url 'at_services' %}" class="btn btn-rw-ghost btn-sm">
+      <i class="fa-solid fa-server me-1"></i>AT Services Dashboard
+    </a>
   </div>
 </div>
 
 <div class="container pb-5">
   <div class="row g-4">
-    <div class="col-lg-6">
-      <div class="card rw-card p-4">
-        <h5 class="fw-bold mb-3">Incoming Message</h5>
+
+    <!-- ── Send form ── -->
+    <div class="col-lg-5">
+      <div class="card rw-card p-4 mb-4">
+        <h5 class="fw-bold mb-1">Incoming Driver Message</h5>
+        <p class="small text-muted mb-3">Simulate an SMS/WhatsApp arriving from a driver's phone</p>
         <form method="post">
           {% csrf_token %}
           {% for field in form %}
           <div class="mb-3">
-            <label class="form-label fw-semibold">{{ field.label }}</label>
+            <label class="form-label fw-semibold small">{{ field.label }}</label>
             {{ field }}
-            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-            {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+            {% if field.help_text %}<div class="form-text small">{{ field.help_text }}</div>{% endif %}
+            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
           </div>
           {% endfor %}
-          <button type="submit" class="btn btn-rw-primary w-100">Process Message</button>
+          <button type="submit" class="btn btn-rw-primary w-100">
+            <i class="fa-solid fa-paper-plane me-2"></i>Process Message
+          </button>
         </form>
       </div>
-      <div class="card rw-card p-4 mt-3">
-        <h6 class="fw-bold">Example Messages</h6>
-        <ul class="list-unstyled small font-monospace mb-0">
-          <li class="mb-2"><code>ACCIDENT#Chalinze#Dar es Salaam to Morogoro</code></li>
-          <li class="mb-2"><code>FLOOD#Kilosa#Morogoro to Dodoma</code></li>
-          <li><code>BADROAD#Gairo#Dar es Salaam to Dodoma</code></li>
-        </ul>
+
+      <!-- Quick-fill examples -->
+      <div class="card rw-card p-4">
+        <h6 class="fw-bold mb-3"><i class="fa-solid fa-lightbulb me-1" style="color:var(--rw-caution)"></i>Quick Example Messages</h6>
+        <p class="small text-muted mb-3">Format: <code>TYPE#Location#RouteHint</code></p>
+        <div class="d-flex flex-column gap-2">
+          {% for label, msg in examples %}
+          <button class="btn btn-sm text-start" onclick="fillMessage('{{ msg }}')"
+                  style="background:#f8fafc;border:1px solid var(--rw-border);font-family:monospace;font-size:0.8rem;color:var(--rw-primary)">
+            <i class="fa-solid fa-copy me-2 text-muted" style="font-size:0.7rem"></i>{{ msg }}
+          </button>
+          {% empty %}
+          <button class="btn btn-sm text-start" onclick="fillMessage('ACCIDENT#Chalinze#Morogoro')"
+                  style="background:#f8fafc;border:1px solid var(--rw-border);font-family:monospace;font-size:0.8rem;color:var(--rw-primary)">
+            ACCIDENT#Chalinze#Morogoro
+          </button>
+          <button class="btn btn-sm text-start" onclick="fillMessage('FLOOD#Kilosa#Morogoro Dodoma')"
+                  style="background:#f8fafc;border:1px solid var(--rw-border);font-family:monospace;font-size:0.8rem;color:var(--rw-primary)">
+            FLOOD#Kilosa#Morogoro Dodoma
+          </button>
+          <button class="btn btn-sm text-start" onclick="fillMessage('BADROAD#Gairo#Dodoma')"
+                  style="background:#f8fafc;border:1px solid var(--rw-border);font-family:monospace;font-size:0.8rem;color:var(--rw-primary)">
+            BADROAD#Gairo#Dodoma
+          </button>
+          <button class="btn btn-sm text-start" onclick="fillMessage('THEFT#Nzega#Mwanza')"
+                  style="background:#f8fafc;border:1px solid var(--rw-border);font-family:monospace;font-size:0.8rem;color:var(--rw-primary)">
+            THEFT#Nzega#Mwanza
+          </button>
+          <button class="btn btn-sm text-start" onclick="fillMessage('FUEL#Singida#Dodoma Mwanza')"
+                  style="background:#f8fafc;border:1px solid var(--rw-border);font-family:monospace;font-size:0.8rem;color:var(--rw-primary)">
+            FUEL#Singida#Dodoma Mwanza
+          </button>
+          {% endfor %}
+        </div>
       </div>
     </div>
-    <div class="col-lg-6">
-      {% include "partials/ai_result_card.html" %}
-      {% if not outgoing_alert and not ai_result %}
-      <div class="card rw-card p-4 text-center text-muted">
-        <div class="display-4 mb-3">📱</div>
-        <p>Submit a message to see the auto-generated RouteWise TZ alert and route risk update.</p>
+
+    <!-- ── Results column ── -->
+    <div class="col-lg-7">
+
+      {% if submitted_report %}
+      <!-- AT pipeline result card -->
+      <div class="card rw-card p-4 mb-4" style="border-left:4px solid var(--rw-safe)">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div style="width:36px;height:36px;background:rgba(6,214,160,.12);border-radius:10px;display:flex;align-items:center;justify-content:center">
+            <i class="fa-solid fa-circle-check" style="color:var(--rw-safe)"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold mb-0">Message Processed</h6>
+            <small class="text-muted">Africa's Talking pipeline complete</small>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <div class="p-2 rounded small" style="background:#f8fafc">
+              <div class="text-muted" style="font-size:0.7rem">INCIDENT TYPE</div>
+              <strong>{{ submitted_report.incident_type }}</strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 rounded small" style="background:#f8fafc">
+              <div class="text-muted" style="font-size:0.7rem">LOCATION</div>
+              <strong>{{ submitted_report.location_name }}</strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 rounded small" style="background:#f8fafc">
+              <div class="text-muted" style="font-size:0.7rem">ROUTE</div>
+              <strong>{{ submitted_report.route.name|truncatechars:28 }}</strong>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-2 rounded small" style="background:#f8fafc">
+              <div class="text-muted" style="font-size:0.7rem">SEGMENT</div>
+              <strong>{{ submitted_report.segment.label|default:"Auto-matched" }}</strong>
+            </div>
+          </div>
+        </div>
       </div>
       {% endif %}
-      {% if outgoing_alert or ai_result %}
-      <p class="small text-muted">Alert sent/logged via Africa's Talking when credentials are configured.</p>
+
+      {% if ai_result %}
+      <!-- AI analysis -->
+      <div class="card rw-card p-4 mb-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div style="width:36px;height:36px;background:rgba(0,180,216,.1);border-radius:10px;display:flex;align-items:center;justify-content:center">
+            <i class="fa-solid fa-brain" style="color:var(--rw-accent-dark)"></i>
+          </div>
+          <h6 class="fw-bold mb-0">AI Risk Analysis (Gemini)</h6>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-4 text-center">
+            <div style="font-size:2rem;font-weight:900;color:{% if ai_result.risk_score > 60 %}var(--rw-high){% elif ai_result.risk_score > 30 %}var(--rw-caution){% else %}var(--rw-safe){% endif %}">
+              {{ ai_result.risk_score }}
+            </div>
+            <div class="small text-muted">Risk /100</div>
+          </div>
+          <div class="col-4 text-center">
+            <div style="font-size:2rem;font-weight:900;color:var(--rw-primary)">{{ ai_result.estimated_delay_minutes }}</div>
+            <div class="small text-muted">Delay (min)</div>
+          </div>
+          <div class="col-4 text-center">
+            <span class="status-badge badge-{% if ai_result.severity == 'Low' %}safe{% elif ai_result.severity == 'Medium' %}caution{% elif ai_result.severity == 'High' %}high-risk{% else %}avoid{% endif %}" style="font-size:0.85rem;padding:.4em .9em">
+              {{ ai_result.severity }}
+            </span>
+          </div>
+        </div>
+        <div class="recommendation-box">
+          <div class="small fw-bold mb-1"><i class="fa-solid fa-route me-1"></i>Recommendation</div>
+          <p class="small mb-0">{{ ai_result.recommendation }}</p>
+        </div>
+      </div>
       {% endif %}
-      <div class="card rw-card p-4 mt-3">
-        <h6 class="fw-bold">Integration Placeholders</h6>
-        <p class="small text-muted mb-0">
-          <code>send_sms_alert()</code> and <code>send_whatsapp_alert()</code> in
-          <code>core/services/messaging.py</code> — ready for Africa's Talking API.
+
+      {% if outgoing_alert %}
+      <!-- Outgoing AT alert -->
+      <div class="card rw-card p-4 mb-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div style="width:36px;height:36px;background:rgba(37,211,102,.1);border-radius:10px;display:flex;align-items:center;justify-content:center">
+            <i class="fa-solid fa-paper-plane" style="color:#059669"></i>
+          </div>
+          <h6 class="fw-bold mb-0">Outgoing AT Alert</h6>
+        </div>
+        <div class="alert-outgoing p-3 rounded">{{ outgoing_alert }}</div>
+        <p class="small text-muted mt-2 mb-0">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Sent via Africa's Talking SMS/WhatsApp to reporter + all route subscribers.
+          Check server logs for delivery details.
         </p>
       </div>
+      {% endif %}
+
+      {% if not submitted_report and not ai_result %}
+      <div class="card rw-card p-5 text-center text-muted">
+        <i class="fa-solid fa-mobile-screen-button fa-3x mb-3 d-block" style="opacity:.2"></i>
+        <h6 class="fw-bold">Submit a driver message</h6>
+        <p class="small mb-0">
+          The full pipeline runs:<br>
+          Parse SMS → AI analysis → risk recalculate → AT SMS/WA delivery
+        </p>
+      </div>
+      {% endif %}
+
+      <!-- AT pipeline diagram -->
+      <div class="card rw-card p-4 mt-3">
+        <h6 class="fw-bold mb-3"><i class="fa-solid fa-diagram-project me-1"></i>Africa's Talking Pipeline</h6>
+        <div class="d-flex align-items-center gap-2 flex-wrap small">
+          <span class="px-2 py-1 rounded fw-semibold" style="background:rgba(0,180,216,.1);color:var(--rw-accent-dark)">📱 Driver SMS</span>
+          <i class="fa-solid fa-arrow-right text-muted"></i>
+          <span class="px-2 py-1 rounded fw-semibold" style="background:rgba(13,59,102,.08);color:var(--rw-primary)">AT Webhook</span>
+          <i class="fa-solid fa-arrow-right text-muted"></i>
+          <span class="px-2 py-1 rounded fw-semibold" style="background:rgba(0,180,216,.1);color:var(--rw-accent-dark)">Parse</span>
+          <i class="fa-solid fa-arrow-right text-muted"></i>
+          <span class="px-2 py-1 rounded fw-semibold" style="background:rgba(0,180,216,.1);color:var(--rw-accent-dark)">Gemini AI</span>
+          <i class="fa-solid fa-arrow-right text-muted"></i>
+          <span class="px-2 py-1 rounded fw-semibold" style="background:rgba(6,214,160,.12);color:#059669">Risk Update</span>
+          <i class="fa-solid fa-arrow-right text-muted"></i>
+          <span class="px-2 py-1 rounded fw-semibold" style="background:rgba(239,71,111,.1);color:#dc2626">📡 Broadcast</span>
+          <i class="fa-solid fa-arrow-right text-muted"></i>
+          <span class="px-2 py-1 rounded fw-semibold" style="background:rgba(255,209,102,.2);color:#b45309">⚡ Airtime</span>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fillMessage(msg) {
+  const ta = document.querySelector('textarea[name="message_text"]');
+  if (ta) {
+    ta.value = msg;
+    ta.focus();
+  }
+}
+</script>
 {% endblock %}
