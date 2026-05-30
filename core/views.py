@@ -367,8 +367,9 @@ def driver_profile(request):
 
 
 def driver_directory(request):
+    # Include phone-only drivers registered via USSD (user__isnull=True), not just web accounts.
     drivers = (
-        Driver.objects.filter(user__isnull=False)
+        Driver.objects
         .annotate(report_count=Count("reported_incidents", filter=Q(reported_incidents__approved=True)))
         .order_by("-trust_score", "-created_at")
     )

@@ -324,6 +324,8 @@ class ATService:
         from ..segment_utils import find_closest_segment
         from .incident_processing import finalize_incident_report
 
+        phone_number = (phone_number or "").strip()
+
         # Log session
         try:
             sess, _ = USSDSession.objects.get_or_create(
@@ -334,7 +336,7 @@ class ATService:
             sess.final_text = text
             sess.save(update_fields=["final_text", "updated_at"])
         except Exception:
-            pass
+            logger.warning("[USSD] Session logging failed for %s", session_id)
 
         parts  = text.split("*") if text else []
         lvl    = lambda n, d="": parts[n] if len(parts) > n else d  # noqa: E731
@@ -379,7 +381,7 @@ class ATService:
                         msg += f"Near: {latest.location_name}\n"
                         msg += f"Severity: {latest.severity}\n"
                     msg += "\nDrive safe! - RouteWise TZ"
-                    _log_ussd(phone_number, f"checked route: {r.name}")
+                    _log_ussd(phone_number, f"check: {r.name}", session_id)
                     return msg
             except (ValueError, IndexError):
                 pass
@@ -432,7 +434,7 @@ class ATService:
                     severity="Medium",
                 )
                 finalize_incident_report(report, notify_phone=phone_number)
-                _log_ussd(phone_number, f"reported {itype} @ {location}")
+                _log_ussd(phone_number, f"report: {itype} @ {location}", session_id)
                 return (
                     f"END Incident Reported!\n"
                     f"Type: {itype}\n"
@@ -475,17 +477,22 @@ class ATService:
             except ValueError:
                 pass
 
-            driver, created = Driver.objects.get_or_create(
-                phone_number=phone_number,
-                defaults={
-                    "full_name":      l1,
-                    "vehicle_type":   VEHICLE_MENU.get(l2, "Van"),
-                    "transport_type": "General Transport",
-                    "main_route":     route_name,
-                },
-            )
+            try:
+                driver, created = Driver.objects.get_or_create(
+                    phone_number=phone_number,
+                    defaults={
+                        "full_name":      (l1 or "").strip()[:200] or "USSD Driver",
+                        "vehicle_type":   VEHICLE_MENU.get(l2, "Van"),
+                        "transport_type": "General Transport",
+                        "main_route":     route_name,
+                    },
+                )
+            except Exception as exc:
+                logger.error("[USSD] Driver registration failed for %s: %s", phone_number, exc)
+                return "END Error saving registration. Please try again."
+
             if created:
-                _log_ussd(phone_number, f"registered driver: {l1}")
+                _log_ussd(phone_number, f"register: {driver.full_name}", session_id)
                 return (
                     f"END Registration Complete!\n"
                     f"Name: {l1}\n"
@@ -495,6 +502,7 @@ class ATService:
                     f"- RouteWise TZ"
                 )
             else:
+                _log_ussd(phone_number, f"register (existing): {driver.full_name}", session_id)
                 return (
                     f"END Already registered!\n"
                     f"Welcome back, {driver.full_name}.\n"
@@ -514,8 +522,11 @@ class ATService:
 
             try:
                 idx = int(l1) - 1
-                if 0 <= idx < len(routes):
-                    r = routes[idx]
+            except ValueError:
+                return "END Invalid selection."
+            if 0 <= idx < len(routes):
+                r = routes[idx]
+                try:
                     sub, created = ATSubscription.objects.get_or_create(
                         phone_number=phone_number,
                         route=r,
@@ -525,20 +536,21 @@ class ATService:
                         sub.is_active = True
                         sub.save(update_fields=["is_active"])
                         created = True
+                except Exception as exc:
+                    logger.error("[USSD] Subscription failed for %s → %s: %s", phone_number, r.name, exc)
+                    return "END Error saving subscription. Please try again."
 
-                    _log_ussd(phone_number, f"subscribed to {r.name}")
-                    if created:
-                        return (
-                            f"END Subscribed!\n"
-                            f"Route: {r.origin} to {r.destination}\n\n"
-                            f"You'll get SMS alerts when\n"
-                            f"incidents are reported.\n"
-                            f"Reply STOP to unsubscribe.\n"
-                            f"- RouteWise TZ"
-                        )
-                    return f"END Already subscribed to\n{r.name[:40]}"
-            except (ValueError, IndexError):
-                pass
+                _log_ussd(phone_number, f"subscribe: {r.name}", session_id)
+                if created:
+                    return (
+                        f"END Subscribed!\n"
+                        f"Route: {r.origin} to {r.destination}\n\n"
+                        f"You'll get SMS alerts when\n"
+                        f"incidents are reported.\n"
+                        f"Reply STOP to unsubscribe.\n"
+                        f"- RouteWise TZ"
+                    )
+                return f"END Already subscribed to\n{r.name[:40]}"
             return "END Invalid selection."
 
         # ── Option 5: Unsubscribe ──────────────────────────────────
@@ -556,13 +568,18 @@ class ATService:
 
             try:
                 idx = int(l1) - 1
-                if 0 <= idx < len(subs):
-                    s = subs[idx]
+            except ValueError:
+                return "END Invalid selection."
+            if 0 <= idx < len(subs):
+                s = subs[idx]
+                try:
                     s.is_active = False
                     s.save(update_fields=["is_active"])
-                    return f"END Unsubscribed from\n{s.route.name[:40]}\n- RouteWise TZ"
-            except (ValueError, IndexError):
-                pass
+                except Exception as exc:
+                    logger.error("[USSD] Unsubscribe failed for %s → %s: %s", phone_number, s.route.name, exc)
+                    return "END Error updating subscription. Please try again."
+                _log_ussd(phone_number, f"unsubscribe: {s.route.name}", session_id)
+                return f"END Unsubscribed from\n{s.route.name[:40]}\n- RouteWise TZ"
             return "END Invalid selection."
 
         # ── Option 0: Exit ─────────────────────────────────────────
@@ -710,8 +727,15 @@ def _log_simulated(channel: str, phone: str, message: str) -> None:
     logger.info("[AT %s simulated → %s] %s", channel, phone, truncated)
 
 
-def _log_ussd(phone: str, action: str) -> None:
+def _log_ussd(phone: str, action: str, session_id: str = "") -> None:
     logger.info("[AT USSD] %s – %s", phone, action)
+    # Persist the concrete outcome on the session row for observability (admin + AT page).
+    if session_id:
+        try:
+            from ..models import USSDSession
+            USSDSession.objects.filter(session_id=session_id).update(action_taken=action[:100])
+        except Exception:
+            logger.warning("[AT USSD] Could not record action_taken for %s", session_id)
 
 
 def _find_route_by_hint_ussd(hint: str):
